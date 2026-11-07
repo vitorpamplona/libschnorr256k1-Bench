@@ -28,8 +28,8 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
+import platform.darwin.sysctlbyname
 import platform.posix.size_tVar
-import platform.posix.sysctlbyname
 
 actual val platformImpls: List<Impl> = listOf(AcinqImpl("cinterop"), CImpl("cinterop"), KotlinImpl)
 
