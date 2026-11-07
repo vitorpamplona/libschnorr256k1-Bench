@@ -6,7 +6,9 @@ never put in the same table.
 
 ## Files
 
-One JSON file per run, `results/<layer>/<yyyy-mm-dd>-<device>.json`:
+One JSON file per run, `results/<layer>/<yyyy-mm-dd>-<device>.json` (`-quick` before `.json`
+for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh` and
+`scripts/run-android-c.sh`; `scripts/table.py` renders them as comparison tables.
 
 ```json
 {
@@ -14,15 +16,16 @@ One JSON file per run, `results/<layer>/<yyyy-mm-dd>-<device>.json`:
   "vectors": "v1",
   "vectorsSha256": "<SHA-256 of vectors/v1.txt>",
   "layer": "c | jvm | native | android",
+  "quick": false,
   "context": {
     "date": "2026-11-07",
     "device": "Pixel 8 | MacBook Pro M3 | ...",
     "cpu": "...",
     "os": "...",
-    "runtime": "e.g. Temurin 21.0.12 / ART API 35 / Kotlin/Native 2.4.21 / clang 18 -O2",
+    "runtime": "e.g. OpenJDK 64-Bit Server VM 21.0.12 / ART 2.1.0 / Kotlin/Native 2.4.21 / C, 13.3.0, ...",
     "machine": "dedicated | shared",
-    "harness": "<libschnorr256k1-bench commit>",
-    "libraries": { "libsecp256k1": "6e2c8bc", "libschnorr256k1": "2a8798e", "schnorr256k1-kotlin": "0a37aee", "...": "..." }
+    "harness": "<libschnorr256k1-bench commit>[-dirty]",
+    "libraries": { "libsecp256k1": "6e2c8bc | secp256k1-kmp 0.24.0", "libschnorr256k1": "2a8798e | schnorr256k1-kmp 1.0.5", "kotlin": "schnorr256k1-kotlin 0a37aee" }
   },
   "rows": [
     {
@@ -36,9 +39,18 @@ One JSON file per run, `results/<layer>/<yyyy-mm-dd>-<device>.json`:
       "correct": true,
       "known_issues": []
     }
-  ]
+  ],
+  "known_issues_observed": {
+    "libschnorr256k1": { "KI-1": true, "KI-2": true, "KI-3": true },
+    "libsecp256k1": { "KI-1": null, "KI-2": false, "KI-3": false }
+  }
 }
 ```
+
+A layer has a row for every operation each of its libraries has (a library without a fast or
+batch verify has no row for it), and a `libraries` entry for each library it ran: the C
+libraries' commits on the `c` layer, the binding's version through a binding, the submodule's
+commit (`-dirty` with local changes) for the pure-Kotlin library.
 
 ## Columns
 
@@ -46,9 +58,17 @@ One JSON file per run, `results/<layer>/<yyyy-mm-dd>-<device>.json`:
 |---|---|
 | `median_ns` | Median over samples of (sample time ÷ operations in the sample). One operation is one call; for `verifyBatch200.perSig`, one call ÷ 200. |
 | `p5_ns`, `p95_ns` | 5th and 95th percentile of the same per-sample values (nearest rank). |
-| `samples` | Number of samples behind the statistics. A sample is one timed batch of calls lasting at least 100 ms (C), one JMH iteration (JVM, Kotlin/Native) or one Microbenchmark run (Android). |
+| `samples` | Number of samples behind the statistics. A sample is one timed batch of calls lasting at least 100 ms, on every layer: one runner method (`c/main.c`, and its twin `bench/.../Runner.kt` for the Kotlin layers) after 1 s of warm-up, 20 samples. No JMH or Jetpack Microbenchmark, so no layer measures differently. |
 | `correct` | The library's outputs matched `vectors/v1.txt` (and the direct checks in `vectors/README.md`) before timing. A row with `false` is reported but never compared. |
-| `known_issues` | IDs from the table below that affect this operation for this library. |
+| `known_issues` | IDs from the table below that affect this operation for this library, as observed in this run. |
+
+Run-level fields:
+
+| Field | Definition |
+|---|---|
+| `quick` | `--quick`: 0.2 s warm-up, five samples of at least 20 ms. A smoke run (CI): its numbers are never compared or published. |
+| `known_issues_observed` | Per library, whether each known issue reproduced in this run's probes (on keys apart from the vectors, after the timing): `true`, `false`, or `null` when the library lacks the operation. |
+| `context.machine` | `dedicated`: nothing else ran (a laptop on AC power, a phone charged, cool and in flight mode). `shared`: anything else, a cloud VM or CI runner included. Only dedicated runs are published. |
 
 Deliberately not in v1, because they are not reliable on every layer (Android in particular):
 cycles and instructions per operation (need root on Android), and bytes allocated per operation

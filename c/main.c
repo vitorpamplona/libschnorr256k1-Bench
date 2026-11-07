@@ -8,13 +8,21 @@
  *                                      print a schema-v1 result (results/SCHEMA.md) as JSON
  *     --library NAME     only this library (libsecp256k1 | libschnorr256k1)
  *     --device TEXT      context.device       --machine dedicated|shared   context.machine
+ *     --harness COMMIT   context.harness (default: this checkout's commit at configure time)
  *     --quick            short warm-up and samples, for CI smoke runs (numbers not comparable)
  */
 #define _POSIX_C_SOURCE 200809L
+#define _DARWIN_C_SOURCE /* sysctlbyname, which _POSIX_C_SOURCE hides on macOS */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#elif defined(__ANDROID__)
+#include <sys/system_properties.h>
+#endif
 
 #include "backend.h"
 #include "vectors.h"
@@ -321,6 +329,20 @@ static const char *expected_digest(const char *file, const char *check) {
 
 static void cpu_model(char *out, size_t cap) {
     snprintf(out, cap, "unknown");
+#if defined(__APPLE__)
+    size_t len = cap;
+    if (sysctlbyname("machdep.cpu.brand_string", out, &len, NULL, 0) == 0) return;
+#elif defined(__ANDROID__)
+    /* As the Android layer's Build.SOC_MANUFACTURER / SOC_MODEL (API 31+), else the board. */
+    char man[PROP_VALUE_MAX] = "", model[PROP_VALUE_MAX] = "";
+    __system_property_get("ro.soc.manufacturer", man);
+    __system_property_get("ro.soc.model", model);
+    if (!model[0]) __system_property_get("ro.board.platform", model);
+    if (model[0]) {
+        snprintf(out, cap, "%s%s%s", man, man[0] ? " " : "", model);
+        return;
+    }
+#endif
     FILE *f = fopen("/proc/cpuinfo", "r");
     if (!f) return;
     char line[512];
@@ -353,7 +375,7 @@ static void json_str(FILE *o, const char *s) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) die("usage: bench vectors | bench run --vectors FILE [--library NAME] [--device TEXT] [--machine dedicated|shared] [--quick]");
+    if (argc < 2) die("usage: bench vectors | bench run --vectors FILE [--library NAME] [--device TEXT] [--machine dedicated|shared] [--harness COMMIT] [--quick]");
     derive();
 
     if (strcmp(argv[1], "vectors") == 0) {
@@ -369,13 +391,14 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "run") != 0) die("unknown command");
 
-    const char *vec_path = NULL, *only = NULL, *device = "unknown", *machine = "unknown";
+    const char *vec_path = NULL, *only = NULL, *device = "unknown", *machine = "unknown", *harness = BENCH_HARNESS_VERSION;
     int quick = 0;
     for (int i = 2; i < argc; i++) {
         if (!strcmp(argv[i], "--vectors") && i + 1 < argc) vec_path = argv[++i];
         else if (!strcmp(argv[i], "--library") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--device") && i + 1 < argc) device = argv[++i];
         else if (!strcmp(argv[i], "--machine") && i + 1 < argc) machine = argv[++i];
+        else if (!strcmp(argv[i], "--harness") && i + 1 < argc) harness = argv[++i];
         else if (!strcmp(argv[i], "--quick")) quick = 1;
         else die("unknown option");
     }
@@ -402,7 +425,13 @@ int main(int argc, char **argv) {
     json_str(o, cpu);
     fprintf(o, ",\n    \"os\": ");
 #if defined(__ANDROID__)
-    json_str(o, "Android");
+    {
+        char rel[PROP_VALUE_MAX] = "", sdk[PROP_VALUE_MAX] = "", os[96];
+        __system_property_get("ro.build.version.release", rel);
+        __system_property_get("ro.build.version.sdk", sdk);
+        snprintf(os, sizeof os, "Android %s (API %s)", rel, sdk);
+        json_str(o, os);
+    }
 #elif defined(__APPLE__)
     json_str(o, "macOS");
 #elif defined(__linux__)
@@ -414,8 +443,13 @@ int main(int argc, char **argv) {
     json_str(o, "C, " __VERSION__ ", " BENCH_COMPILER_FLAGS);
     fprintf(o, ",\n    \"machine\": ");
     json_str(o, machine);
-    fprintf(o, ",\n    \"harness\": \"%s\",\n    \"libraries\": {", BENCH_HARNESS_VERSION);
-    for (size_t bi = 0; bi < N_BACKENDS; bi++) fprintf(o, "%s\"%s\": \"%s\"", bi ? ", " : " ", BACKENDS[bi]->name, BACKENDS[bi]->version);
+    fprintf(o, ",\n    \"harness\": ");
+    json_str(o, harness);
+    fprintf(o, ",\n    \"libraries\": {");
+    for (size_t bi = 0, n = 0; bi < N_BACKENDS; bi++) {
+        if (only && strcmp(only, BACKENDS[bi]->name)) continue;
+        fprintf(o, "%s\"%s\": \"%s\"", n++ ? ", " : " ", BACKENDS[bi]->name, BACKENDS[bi]->version);
+    }
     fprintf(o, " }\n  },\n  \"rows\": [");
 
     int first_row = 1;
