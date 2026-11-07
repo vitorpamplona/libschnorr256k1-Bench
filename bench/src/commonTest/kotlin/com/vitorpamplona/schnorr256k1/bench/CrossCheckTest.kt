@@ -21,65 +21,35 @@
 package com.vitorpamplona.schnorr256k1.bench
 
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * All implementations give identical results on the same inputs (libsecp256k1 via ACINQ is the
- * reference). Known bugs are excluded here and reported by KnownIssuesTest instead.
+ * The checks of every benchmark run, without the timing, on every library this platform has
+ * (bench-android runs the same on a device): the reference re-derives vectors/v1.txt, and every
+ * other library gives its results, except where an observed known issue explains it.
  */
 class CrossCheckTest {
-    private val ref = AcinqImpl
-    private val others = listOf(CImpl, KotlinImpl)
+    private val runner = Runner(platformLayer, platformImpls, log = ::println)
+    private val reference = platformImpls.first { it.library == "libsecp256k1" }
 
     @Test
-    fun keysSignaturesAndVerification() {
-        val f = Fixture(300, seed = 1)
-        for (k in f.keys) {
-            for (i in others) {
-                assertContentEquals(k.pubkey, i.pubkeyCreate(k.seckey), "${i.name} pubkeyCreate")
-                assertContentEquals(k.compressed, i.pubkeyCompress(k.pubkey), "${i.name} pubkeyCompress")
-                assertContentEquals(k.sig, i.sign(k.msg, k.seckey, k.aux), "${i.name} sign")
-                // No aux: libsecp256k1 masks with 32 zero bytes, the others skip the mask
-                // (KnownIssuesTest), so the signatures differ; both must be valid.
-                assertTrue(ref.verify(i.sign(k.msg, k.seckey, null), k.msg, k.xOnly), "${i.name} sign, no aux")
-                assertTrue(i.verify(k.sig, k.msg, k.xOnly), "${i.name} verify")
-                assertTrue(i.verifyFast(k.sig, k.msg, k.xOnly), "${i.name} verifyFast")
-                val bad = k.sig.copyOf().also { it[63] = (it[63] + 1).toByte() }
-                assertEquals(false, i.verify(bad, k.msg, k.xOnly), "${i.name} verify tampered")
-                val badR = k.sig.copyOf().also { it[5] = (it[5] + 1).toByte() }
-                assertEquals(ref.verify(badR, k.msg, k.xOnly), i.verify(badR, k.msg, k.xOnly), "${i.name} verify tampered R")
-            }
-            assertContentEquals(k.sig, KotlinImpl.signKnownPub(k.msg, k.seckey, k.compressed, k.xOnly, k.aux), "kotlin signKnownPub")
-            if (k.compressed[0] == 0x02.toByte()) {
-                // C's sign_xonly is only right for even-y keys (KnownIssuesTest)
-                assertContentEquals(k.sig, CImpl.signKnownPub(k.msg, k.seckey, k.compressed, k.xOnly, k.aux), "C signKnownPub")
-            }
-        }
+    fun theReferenceReproducesVectorsV1() {
+        val digests = runner.digests(reference)
+        assertEquals(VectorsV1.digests.keys, digests.keys)
+        val wrong = digests.filter { (k, h) -> VectorsV1.digests[k] != h }.keys
+        assertTrue(wrong.isEmpty(), "libsecp256k1 does not reproduce vectors/v1.txt: $wrong")
     }
 
     @Test
-    fun ecdhAndTweaks() {
-        // Keys never verified in this process: C's tweak-mul is wrong for an odd-y key whose x it
-        // has verified for (KnownIssuesTest).
-        val f = Fixture(200, seed = 2)
-        val g = Fixture(200, seed = 3)
-        for ((k, t) in f.keys.zip(g.keys)) {
-            for (i in others) {
-                assertContentEquals(ref.ecdhXOnly(t.xOnly, k.seckey), i.ecdhXOnly(t.xOnly, k.seckey), "${i.name} ecdhXOnly")
-                assertContentEquals(ref.tweakMul(k.compressed, t.seckey), i.tweakMul(k.compressed, t.seckey), "${i.name} tweakMul 33")
-                assertContentEquals(ref.tweakMul(k.pubkey, t.seckey), i.tweakMul(k.pubkey, t.seckey), "${i.name} tweakMul 65")
-                assertContentEquals(ref.tweakAdd(k.seckey, t.seckey), i.tweakAdd(k.seckey, t.seckey), "${i.name} tweakAdd")
-            }
-        }
+    fun everyLibraryIsCorrectOrExplainedByAKnownIssue() {
+        val failures = runner.unexplainedFailures()
+        assertTrue(failures.isEmpty(), "wrong results no known issue explains: $failures")
     }
 
     @Test
-    fun batchOfValidSignatures() {
-        val (key, sigs, msgs) = Fixture(1, seed = 4).batch(64)
-        for (i in others) assertEquals(true, i.verifyBatch(key, sigs, msgs), "${i.name} verifyBatch")
-        val tampered = sigs.toMutableList().also { it[10] = it[10].copyOf().also { b -> b[40] = (b[40] + 1).toByte() } }
-        for (i in others) assertEquals(false, i.verifyBatch(key, tampered, msgs), "${i.name} verifyBatch tampered")
+    fun theReferenceShowsNoKnownIssue() {
+        val seen = runner.check(reference).knownIssues.filterValues { it == true }
+        assertTrue(seen.isEmpty(), "the reference shows $seen: the probes are wrong")
     }
 }
