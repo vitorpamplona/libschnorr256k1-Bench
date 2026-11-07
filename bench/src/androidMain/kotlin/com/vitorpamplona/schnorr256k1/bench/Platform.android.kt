@@ -22,6 +22,7 @@ package com.vitorpamplona.schnorr256k1.bench
 
 import android.os.Build
 import android.util.Log
+import java.io.File
 
 // libschnorr256k1-kmp ships arm64-v8a and x86_64 only: on a 32-bit device its row is left out.
 actual val platformImpls: List<Impl> =
@@ -51,3 +52,8 @@ actual fun platformContext(): Map<String, String> =
 actual fun logErr(message: String) {
     Log.i("schnorr256k1-bench", message)
 }
+
+// On a device the dataset comes from the instrumentation APK's assets (bench-android).
+actual fun readFileBytes(path: String): ByteArray? = runCatching { File(path).readBytes() }.getOrNull()
+
+actual fun environment(name: String): String? = System.getenv(name)

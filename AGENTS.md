@@ -12,7 +12,9 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
 ## Layout
 
 - `vectors/`: the inputs (v1, derived from SHA-256 of labels) and `v1.txt`, the digests every
-  library's outputs must match. `results/SCHEMA.md`: the frozen result format, the twelve
+  library's outputs must match. `datasets/`: `nostr-v1.bin`, 29,614 real signed Nostr events
+  (id, pubkey, sig) from nostrLibBench's corpus, `nostr-v1.txt` (its digests) and the script
+  that extracts it. `results/SCHEMA.md`: the frozen result format (v2), the sixteen
   operations with the exact call per library, and the known issues (KI-1..KI-3).
 - `c/`: the c layer. `main.c` (checks, timing, known-issue probes, JSON), `vectors.c` (its own
   SHA-256 and the derivation), one `backend_*.c` per library, `CMakeLists.txt` (both libraries
@@ -36,8 +38,8 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
   (libsecp256k1's x-only ECDH is a tweak-mul of 02||x) or it has no row. The C and Kotlin
   runners time the same way (results/SCHEMA.md `samples`): change one, change the other.
 - **The schema is frozen.** A new operation, column or statistic, or a change to what one
-  measures, is schema v2 (results/SCHEMA.md); so is any change to the vectors (v2, a new digest
-  file).
+  measures, is the next schema version (results/SCHEMA.md); so is any change to the vectors or a
+  dataset (a new name and digest file).
 - **A wrong result is reported, never hidden.** A row with `correct: false` stays in the table.
   It fails the tests and `table.py --check` unless an observed known issue explains it
   (`Runner.COVERS`, `COVERS` in `table.py`: keep them equal). A new bug gets a KI-n entry in

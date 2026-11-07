@@ -47,7 +47,8 @@ for layer in $layers; do
     c)
       cmake -S c -B build/c -DCMAKE_BUILD_TYPE=Release > /dev/null
       cmake --build build/c --parallel > /dev/null
-      write c build/c/bench run --vectors vectors/v1.txt --device "$device" --machine "$machine" --harness "$harness" $quick
+      write c build/c/bench run --vectors vectors/v1.txt \
+        --dataset datasets/nostr-v1.bin --dataset-digests datasets/nostr-v1.txt --device "$device" --machine "$machine" --harness "$harness" $quick
       ;;
     jvm)
       write jvm ./gradlew --console=plain -q :bench:runJvm \
@@ -60,7 +61,7 @@ for layer in $layers; do
         *) echo "no Kotlin/Native target for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
       esac
       ./gradlew --console=plain -q ":bench:linkReleaseExecutable$target"
-      write native "bench/build/bin/$dir/releaseExecutable/bench.kexe" \
+      write native "bench/build/bin/$dir/releaseExecutable/bench.kexe" --dataset datasets/nostr-v1.bin \
         $quick --device "$device" --machine "$machine" --harness "$harness"
       ;;
     *) echo "unknown layer $layer (c, jvm, native; android: scripts/run-android.sh)" >&2; exit 2 ;;

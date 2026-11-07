@@ -24,13 +24,14 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * bench [--quick] [--library NAME] [--device TEXT] [--machine dedicated|shared] [--harness COMMIT]
- * Prints a schema-v1 result (results/SCHEMA.md) on stdout.
+ * bench [--dataset FILE] [--quick] [--library NAME] [--device TEXT] [--machine dedicated|shared] [--harness COMMIT]
+ * Prints a schema-v2 result (results/SCHEMA.md) on stdout. Without --dataset, BENCH_DATASET.
  */
 @OptIn(ExperimentalTime::class)
 fun main(args: Array<String>) {
     var quick = false
     var only: String? = null
+    var datasetPath: String? = null
     val ctx =
         linkedMapOf(
             "date" to
@@ -47,6 +48,7 @@ fun main(args: Array<String>) {
     while (a < args.size) {
         when (args[a]) {
             "--quick" -> quick = true
+            "--dataset" -> datasetPath = args[++a]
             "--library" -> only = args[++a]
             "--device" -> ctx["device"] = args[++a]
             "--machine" -> ctx["machine"] = args[++a]
@@ -55,5 +57,5 @@ fun main(args: Array<String>) {
         }
         a++
     }
-    println(Runner(platformLayer, platformImpls, quick, ::logErr).runAll(ctx, only))
+    println(Runner(platformLayer, platformImpls, loadDataset(datasetPath), quick, ::logErr).runAll(ctx, only))
 }

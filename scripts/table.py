@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Renders schema-v1 results (results/SCHEMA.md) as Markdown comparison tables.
+"""Renders schema-v2 results (results/SCHEMA.md) as Markdown comparison tables.
 
     scripts/table.py                     # every full run under results/, one table per device
     scripts/table.py results/jvm/X.json results/c/Y.json
@@ -23,14 +23,15 @@ OPS = [
     "verify.sameKey", "verify.manyKeys", "verifyFast.sameKey", "verifyBatch200.perSig",
     "sign", "sign.knownPub", "pubkey.create", "pubkey.compress", "seckey.verify",
     "ecdh.xOnly", "tweak.mul", "tweak.add",
+    "nostr.verify", "nostr.verifyFast", "nostr.verifyBatchByAuthor", "nostr.ecdh",
 ]
 LAYERS = ["c", "native", "jvm", "android"]
 LIBRARIES = ["libsecp256k1", "libschnorr256k1", "kotlin"]
 REFERENCE = "libsecp256k1"
 
 
-def vectors_sha():
-    with open(os.path.join(ROOT, "vectors", "v1.txt"), "rb") as f:
+def file_sha(*path):
+    with open(os.path.join(ROOT, *path), "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
 
 
@@ -42,13 +43,15 @@ def collect(args, quick):
                 paths += [os.path.join(d, f) for f in files if f.endswith(".json")]
         else:
             paths.append(a)
-    sha = vectors_sha()
+    sha = file_sha("vectors", "v1.txt")
+    ds_sha = file_sha("datasets", "nostr-v1.bin")
     runs = []
     for p in sorted(paths):
         with open(p) as f:
             r = json.load(f)
-        if r.get("schema") != 1 or r.get("vectors") != "v1" or r.get("vectorsSha256") != sha:
-            print(f"skipping {p}: not schema 1 on this checkout's vectors/v1.txt", file=sys.stderr)
+        if (r.get("schema") != 2 or r.get("vectors") != "v1" or r.get("vectorsSha256") != sha
+                or r.get("dataset") != "nostr-v1" or r.get("datasetSha256") != ds_sha):
+            print(f"skipping {p}: not schema 2 on this checkout's vectors and dataset", file=sys.stderr)
             continue
         if r.get("quick") and not quick:
             continue

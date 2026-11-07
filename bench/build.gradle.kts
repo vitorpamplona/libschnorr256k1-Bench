@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import java.security.MessageDigest
 
 // The Kotlin layers (results/SCHEMA.md "layer": jvm, native; android through :bench-android):
@@ -17,6 +18,8 @@ plugins {
 // (results/SCHEMA.md "vectorsSha256"), exactly as c/main.c computes it over the file's bytes.
 // The included build pins nothing, so its commit is recorded the way c/ records the C libraries'.
 val vectorsFile = rootProject.file("vectors/v1.txt")
+val datasetFile = rootProject.file("datasets/nostr-v1.bin")
+val datasetDigestsFile = rootProject.file("datasets/nostr-v1.txt")
 val generatedVectors = layout.buildDirectory.dir("generated/vectors/kotlin")
 // The pure-Kotlin library's commit (-dirty if its checkout has changes), for "libraries" in results.
 val kotlinLibCommit =
@@ -29,6 +32,7 @@ val kotlinLibCommit =
 val generateVectors =
     tasks.register("generateVectors") {
         inputs.file(vectorsFile)
+        inputs.file(datasetDigestsFile)
         inputs.property("kotlinLibCommit", kotlinLibCommit)
         outputs.dir(generatedVectors)
         doLast {
@@ -40,6 +44,32 @@ val generateVectors =
                     val (k, v) = it.trim().split(" ")
                     "        \"$k\" to \"$v\""
                 }
+            // datasets/nostr-v1.txt: "file <sha256>", "events N", "pubkeys N", then the digests.
+            val ds =
+                datasetDigestsFile.readLines().filter { it.isNotBlank() }.associate {
+                    val (k, v) = it.trim().split(" ")
+                    k to v
+                }
+            val dsEntries =
+                ds.filterKeys { it.startsWith("nostr.") }.entries.joinToString(",\n") { (k, v) -> "        \"$k\" to \"$v\"" }
+            val dsOut = generatedVectors.get().file("com/vitorpamplona/schnorr256k1/bench/DatasetV1.kt").asFile
+            dsOut.parentFile.mkdirs()
+            dsOut.writeText(
+                """
+                |// Generated from datasets/nostr-v1.txt by :bench:generateVectors. Do not edit.
+                |package com.vitorpamplona.schnorr256k1.bench
+                |
+                |object DatasetV1 {
+                |    const val FILE_SHA256 = "${ds.getValue("file")}"
+                |    const val EVENTS = ${ds.getValue("events")}
+                |
+                |    val digests: Map<String, String> = mapOf(
+                |$dsEntries,
+                |    )
+                |}
+                |
+                """.trimMargin(),
+            )
             val out = generatedVectors.get().file("com/vitorpamplona/schnorr256k1/bench/VectorsV1.kt").asFile
             out.parentFile.mkdirs()
             out.writeText(
@@ -151,14 +181,21 @@ kotlin {
     }
 }
 
+// The tests read the dataset from the checkout (the Android device tests from their APK's assets).
+tasks.withType<Test>().configureEach { environment("BENCH_DATASET", datasetFile.absolutePath) }
+tasks.withType<KotlinNativeTest>().configureEach {
+    environment("BENCH_DATASET", datasetFile.absolutePath)
+}
+
 // The JVM layer: the runner as a plain JVM process (no JMH), like the native executables.
 tasks.register<JavaExec>("runJvm") {
     group = "benchmark"
-    description = "Runs the JVM layer and prints a schema-v1 result. -Pargs=\"--device X --machine Y\""
+    description = "Runs the JVM layer and prints a schema-v2 result. -Pargs=\"--device X --machine Y\""
     val jvm = kotlin.jvm()
     val main = jvm.compilations.getByName("main")
     classpath(main.output.allOutputs, main.runtimeDependencyFiles)
     mainClass.set("com.vitorpamplona.schnorr256k1.bench.MainKt")
     providers.gradleProperty("args").orNull?.let { args(Regex("""'[^']*'|\S+""").findAll(it).map { m -> m.value.trim('\'') }.toList()) }
     jvmArgs("-Xmx1g")
+    environment("BENCH_DATASET", datasetFile.absolutePath)
 }

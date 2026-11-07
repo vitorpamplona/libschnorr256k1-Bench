@@ -43,9 +43,9 @@ cmake --build "$build" --parallel > /dev/null
 
 dir=/data/local/tmp/schnorr256k1-bench
 adb shell mkdir -p "$dir"
-adb push "$build/bench" vectors/v1.txt "$dir/" > /dev/null
+adb push "$build/bench" vectors/v1.txt datasets/nostr-v1.bin datasets/nostr-v1.txt "$dir/" > /dev/null
 file=$(result_file "$out" c "$device" "$quick")
-adb shell "cd $dir && ./bench run --vectors v1.txt --device '$device' --machine $machine --harness $(harness_id) $quick" > "$file.tmp"
+adb shell "cd $dir && ./bench run --vectors v1.txt --dataset nostr-v1.bin --dataset-digests nostr-v1.txt --device '$device' --machine $machine --harness $(harness_id) $quick" > "$file.tmp"
 tr -d '\r' < "$file.tmp" > "$file"
 rm "$file.tmp"
 echo "wrote $file" >&2

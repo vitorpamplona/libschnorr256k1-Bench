@@ -4,8 +4,10 @@
  * The C layer: libsecp256k1 and libschnorr256k1 called directly from C, no runtime in between.
  *
  *   bench vectors                      print the v1 digests (vectors/v1.txt), from libsecp256k1
- *   bench run --vectors FILE [opts]    check every library against FILE, time every operation,
- *                                      print a schema-v1 result (results/SCHEMA.md) as JSON
+ *   bench dataset FILE                 print the digests of a dataset (datasets/nostr-v1.txt)
+ *   bench run --vectors FILE --dataset DATA --dataset-digests FILE [opts]
+ *                                      check every library against both, time every operation,
+ *                                      print a schema-v2 result (results/SCHEMA.md) as JSON
  *     --library NAME     only this library (libsecp256k1 | libschnorr256k1)
  *     --device TEXT      context.device       --machine dedicated|shared   context.machine
  *     --harness COMMIT   context.harness (default: this checkout's commit at configure time)
@@ -41,6 +43,104 @@ static vectors V;
 static const uint8_t *batch_sigs[VEC_BATCH];
 static const uint8_t *batch_msgs[VEC_BATCH];
 static volatile uint64_t sink;
+
+/* ---------------------------------------------------------------- dataset (datasets/README.md) */
+
+#define DS_RECORD 128 /* id (32, the signed message) || pubkey (32) || sig (64) */
+#define DS_PAGE 200   /* events per relay page, for nostr.verifyBatchByAuthor */
+
+static uint8_t *ds;           /* the records */
+static unsigned ds_n;         /* events */
+static unsigned ds_pages;     /* whole pages; the remainder is left out of the batch op */
+static const uint8_t **ds_keys; /* distinct pubkeys, in order of first appearance */
+static unsigned ds_n_keys;
+/* Per page, its authors' groups: group g covers ds_order[g_start[g] .. g_start[g+1]). */
+static unsigned *ds_order, *g_start, *page_first_group;
+static unsigned ds_n_groups;
+static const uint8_t **g_sigs, **g_msgs; /* per event in ds_order */
+
+#define DS_ID(i) (ds + (size_t)(i) * DS_RECORD)
+#define DS_PUB(i) (ds + (size_t)(i) * DS_RECORD + 32)
+#define DS_SIG(i) (ds + (size_t)(i) * DS_RECORD + 64)
+
+static void die(const char *what);
+
+static uint8_t *read_bin(const char *path, size_t *len) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long l = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    uint8_t *b = malloc((size_t)l + 1);
+    if (fread(b, 1, (size_t)l, f) != (size_t)l) { fclose(f); free(b); return NULL; }
+    fclose(f);
+    *len = (size_t)l;
+    return b;
+}
+
+static void load_dataset(const char *path, char sha_hex[65]) {
+    size_t len;
+    ds = read_bin(path, &len);
+    if (!ds) die("cannot read the dataset");
+    if (len == 0 || len % DS_RECORD) die("the dataset is not whole 128-byte records");
+    ds_n = (unsigned)(len / DS_RECORD);
+    uint8_t h[32];
+    sha256(h, ds, len);
+    for (int i = 0; i < 32; i++) sprintf(sha_hex + 2 * i, "%02x", h[i]);
+
+    /* distinct pubkeys, first appearance first (open addressing on the key bytes) */
+    unsigned cap = 1;
+    while (cap < 2 * ds_n) cap <<= 1;
+    const uint8_t **table = calloc(cap, sizeof *table);
+    ds_keys = malloc(ds_n * sizeof *ds_keys);
+    for (unsigned i = 0; i < ds_n; i++) {
+        const uint8_t *k = DS_PUB(i);
+        unsigned slot;
+        memcpy(&slot, k, sizeof slot);
+        for (slot &= cap - 1; table[slot] && memcmp(table[slot], k, 32); slot = (slot + 1) & (cap - 1)) {}
+        if (!table[slot]) { table[slot] = k; ds_keys[ds_n_keys++] = k; }
+    }
+    free(table);
+
+    /* pages of DS_PAGE events, each split into its authors' groups (first appearance first) */
+    ds_pages = ds_n / DS_PAGE;
+    ds_order = malloc(ds_n * sizeof *ds_order);
+    g_start = malloc((ds_n + 1) * sizeof *g_start);
+    page_first_group = malloc((ds_pages + 1) * sizeof *page_first_group);
+    g_sigs = malloc(ds_n * sizeof *g_sigs);
+    g_msgs = malloc(ds_n * sizeof *g_msgs);
+    unsigned w = 0;
+    for (unsigned p = 0; p < ds_pages; p++) {
+        page_first_group[p] = ds_n_groups;
+        unsigned base = p * DS_PAGE;
+        char used[DS_PAGE] = {0};
+        for (unsigned a = 0; a < DS_PAGE; a++) {
+            if (used[a]) continue;
+            g_start[ds_n_groups++] = w;
+            for (unsigned c = a; c < DS_PAGE; c++) {
+                if (used[c] || memcmp(DS_PUB(base + a), DS_PUB(base + c), 32)) continue;
+                used[c] = 1;
+                ds_order[w] = base + c;
+                g_sigs[w] = DS_SIG(base + c);
+                g_msgs[w] = DS_ID(base + c);
+                w++;
+            }
+        }
+    }
+    page_first_group[ds_pages] = ds_n_groups;
+    g_start[ds_n_groups] = w;
+}
+
+/* The page's groups through the library: batch verify for groups of two or more. */
+static int verify_page(const backend *b, unsigned p) {
+    int all = 1;
+    for (unsigned g = page_first_group[p]; g < page_first_group[p + 1]; g++) {
+        unsigned s = g_start[g], n = g_start[g + 1] - s;
+        const uint8_t *pub = DS_PUB(ds_order[s]);
+        all &= n == 1 ? b->verify(g_sigs[s], g_msgs[s], pub) : b->verify_batch(pub, g_sigs + s, g_msgs + s, n);
+    }
+    return all;
+}
 
 /* ---------------------------------------------------------------- vectors */
 
@@ -112,6 +212,35 @@ static void digests(const backend *b, digest_result out[N_DIGESTS]) {
     for (int d = 0; d < N_DIGESTS; d++) sha256_final(&c[d], out[d].digest);
 }
 
+enum { DD_VERIFY, DD_VERIFY_TAMPERED, DD_ECDH, N_DS_DIGESTS };
+static const char *const DS_DIGEST_NAMES[N_DS_DIGESTS] = {"nostr.verify", "nostr.verify.tampered", "nostr.ecdh"};
+
+/* Over the dataset, in order: verify's result per event, the result for the event with the
+ * last byte of s incremented, and x-only ECDH with each distinct pubkey (vector key d mod N). */
+static void dataset_digests(const backend *b, digest_result out[N_DS_DIGESTS]) {
+    sha256_ctx c[N_DS_DIGESTS];
+    for (int d = 0; d < N_DS_DIGESTS; d++) {
+        sha256_init(&c[d]);
+        out[d].check = DS_DIGEST_NAMES[d];
+        out[d].ok = 1;
+    }
+    for (unsigned i = 0; i < ds_n; i++) {
+        uint8_t ok = (uint8_t)(b->verify(DS_SIG(i), DS_ID(i), DS_PUB(i)) ? 1 : 0);
+        sha256_update(&c[DD_VERIFY], &ok, 1);
+        uint8_t bad[64];
+        memcpy(bad, DS_SIG(i), 64);
+        bad[63]++;
+        ok = (uint8_t)(b->verify(bad, DS_ID(i), DS_PUB(i)) ? 1 : 0);
+        sha256_update(&c[DD_VERIFY_TAMPERED], &ok, 1);
+    }
+    for (unsigned d = 0; d < ds_n_keys; d++) {
+        uint8_t x[32];
+        out[DD_ECDH].ok &= b->ecdh_xonly(x, ds_keys[d], V.seckey[d % VEC_N]);
+        sha256_update(&c[DD_ECDH], x, 32);
+    }
+    for (int d = 0; d < N_DS_DIGESTS; d++) sha256_final(&c[d], out[d].digest);
+}
+
 static void hex(char *out, const uint8_t *in, size_t n) {
     for (size_t i = 0; i < n; i++) sprintf(out + 2 * i, "%02x", in[i]);
 }
@@ -120,12 +249,14 @@ static void hex(char *out, const uint8_t *in, size_t n) {
 
 typedef enum {
     OP_VERIFY_SAME, OP_VERIFY_MANY, OP_VERIFY_FAST_SAME, OP_VERIFY_BATCH, OP_SIGN, OP_SIGN_KNOWN_PUB,
-    OP_PUB_CREATE, OP_PUB_COMPRESS, OP_SECKEY_VERIFY, OP_ECDH, OP_TWEAK_MUL, OP_TWEAK_ADD, N_OPS
+    OP_PUB_CREATE, OP_PUB_COMPRESS, OP_SECKEY_VERIFY, OP_ECDH, OP_TWEAK_MUL, OP_TWEAK_ADD,
+    OP_NOSTR_VERIFY, OP_NOSTR_VERIFY_FAST, OP_NOSTR_BATCH, OP_NOSTR_ECDH, N_OPS
 } op_id;
 
 static const char *const OP_NAMES[N_OPS] = {
     "verify.sameKey", "verify.manyKeys", "verifyFast.sameKey", "verifyBatch200.perSig", "sign", "sign.knownPub",
     "pubkey.create", "pubkey.compress", "seckey.verify", "ecdh.xOnly", "tweak.mul", "tweak.add",
+    "nostr.verify", "nostr.verifyFast", "nostr.verifyBatchByAuthor", "nostr.ecdh",
 };
 
 static unsigned next_index;
@@ -183,6 +314,25 @@ static int run(const backend *b, op_id op, long n) {
     case OP_TWEAK_ADD:
         for (long r = 0; r < n; r++, k++) { unsigned i = k % VEC_N; b->tweak_add(out, V.seckey[i], V.tweak[i]); acc += out[7]; }
         break;
+    case OP_NOSTR_VERIFY:
+        for (long r = 0; r < n; r++, k++) { unsigned i = k % ds_n; acc += (uint64_t)b->verify(DS_SIG(i), DS_ID(i), DS_PUB(i)); }
+        break;
+    case OP_NOSTR_VERIFY_FAST: {
+        int (*f)(const uint8_t *, const uint8_t *, const uint8_t *) = b->verify_fast ? b->verify_fast : b->verify;
+        for (long r = 0; r < n; r++, k++) { unsigned i = k % ds_n; acc += (uint64_t)f(DS_SIG(i), DS_ID(i), DS_PUB(i)); }
+        break;
+    }
+    case OP_NOSTR_BATCH: /* one call is one page */
+        if (!b->verify_batch) return 0;
+        for (long r = 0; r < n; r++, k++) acc += (uint64_t)verify_page(b, k % ds_pages);
+        break;
+    case OP_NOSTR_ECDH:
+        for (long r = 0; r < n; r++, k++) {
+            unsigned d = k % ds_n_keys;
+            b->ecdh_xonly(out, ds_keys[d], V.seckey[d % VEC_N]);
+            acc += out[7];
+        }
+        break;
     default:
         return 0;
     }
@@ -220,7 +370,7 @@ static timing time_op(const backend *b, op_id op, int quick) {
     timing t = {0};
     double warm_ns = quick ? 0.2e9 : 1e9, sample_ns = quick ? 20e6 : 100e6;
     int n_samples = quick ? 5 : 20;
-    double per_call = op == OP_VERIFY_BATCH ? VEC_BATCH : 1;
+    double per_call = op == OP_VERIFY_BATCH ? VEC_BATCH : op == OP_NOSTR_BATCH ? DS_PAGE : 1;
     if (!run(b, op, 1)) return t;
     double start = now_ns();
     while (now_ns() - start < warm_ns) run(b, op, 16);
@@ -389,12 +539,29 @@ int main(int argc, char **argv) {
         }
         return 0;
     }
+    if (strcmp(argv[1], "dataset") == 0) {
+        if (argc < 3) die("usage: bench dataset FILE");
+        char sha[65];
+        load_dataset(argv[2], sha);
+        digest_result d[N_DS_DIGESTS];
+        dataset_digests(&backend_libsecp256k1, d);
+        if (!d[DD_ECDH].ok) die("reference ecdh failed");
+        printf("file %s\nevents %u\npubkeys %u\n", sha, ds_n, ds_n_keys);
+        for (int i = 0; i < N_DS_DIGESTS; i++) {
+            char h[65];
+            hex(h, d[i].digest, 32);
+            printf("%s %s\n", d[i].check, h);
+        }
+        return 0;
+    }
     if (strcmp(argv[1], "run") != 0) die("unknown command");
 
-    const char *vec_path = NULL, *only = NULL, *device = "unknown", *machine = "unknown", *harness = BENCH_HARNESS_VERSION;
+    const char *vec_path = NULL, *ds_path = NULL, *dsd_path = NULL, *only = NULL, *device = "unknown", *machine = "unknown", *harness = BENCH_HARNESS_VERSION;
     int quick = 0;
     for (int i = 2; i < argc; i++) {
         if (!strcmp(argv[i], "--vectors") && i + 1 < argc) vec_path = argv[++i];
+        else if (!strcmp(argv[i], "--dataset") && i + 1 < argc) ds_path = argv[++i];
+        else if (!strcmp(argv[i], "--dataset-digests") && i + 1 < argc) dsd_path = argv[++i];
         else if (!strcmp(argv[i], "--library") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--device") && i + 1 < argc) device = argv[++i];
         else if (!strcmp(argv[i], "--machine") && i + 1 < argc) machine = argv[++i];
@@ -403,6 +570,15 @@ int main(int argc, char **argv) {
         else die("unknown option");
     }
     if (!vec_path) die("--vectors FILE is required");
+    if (!ds_path || !dsd_path) die("--dataset FILE and --dataset-digests FILE are required");
+    char ds_sha[65];
+    load_dataset(ds_path, ds_sha);
+    char *dsd = read_file(dsd_path);
+    if (!dsd) die("cannot read the dataset digests");
+    {
+        const char *want = expected_digest(dsd, "file");
+        if (!want || strcmp(want, ds_sha)) die("the dataset is not the one its digests file describes");
+    }
     char *vec = read_file(vec_path);
     if (!vec) die("cannot read the vectors file");
     char vec_sha[65];
@@ -418,7 +594,8 @@ int main(int argc, char **argv) {
     strftime(date, sizeof date, "%Y-%m-%d", gmtime(&tt));
 
     FILE *o = stdout;
-    fprintf(o, "{\n  \"schema\": 1,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n  \"layer\": \"c\",\n", vec_sha);
+    fprintf(o, "{\n  \"schema\": 2,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
+    fprintf(o, "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"%s\",\n  \"layer\": \"c\",\n", ds_sha);
     fprintf(o, "  \"quick\": %s,\n  \"context\": {\n    \"date\": \"%s\",\n    \"device\": ", quick ? "true" : "false", date);
     json_str(o, device);
     fprintf(o, ",\n    \"cpu\": ");
@@ -488,11 +665,31 @@ int main(int argc, char **argv) {
         }
         if (b->verify_batch && !b->verify_batch(V.xonly[0], batch_sigs, batch_msgs, VEC_BATCH)) batch_ok = 0;
         int verify_ok = good[D_VERIFY] && good[D_VERIFY_TAMPERED];
+
+        digest_result dd[N_DS_DIGESTS];
+        dataset_digests(b, dd);
+        int dgood[N_DS_DIGESTS];
+        for (int i = 0; i < N_DS_DIGESTS; i++) {
+            char h[65];
+            hex(h, dd[i].digest, 32);
+            const char *want = expected_digest(dsd, dd[i].check);
+            if (!want) die("dataset digests file lacks a check");
+            dgood[i] = strcmp(h, want) == 0;
+            if (!dgood[i]) fprintf(stderr, "%s: %s digest differs from the dataset's\n", b->name, dd[i].check);
+        }
+        int ds_fast_ok = 1, ds_batch_ok = 1;
+        for (unsigned i = 0; i < ds_n && b->verify_fast; i++)
+            if (!b->verify_fast(DS_SIG(i), DS_ID(i), DS_PUB(i))) ds_fast_ok = 0;
+        for (unsigned p = 0; p < ds_pages && b->verify_batch; p++)
+            if (!verify_page(b, p)) ds_batch_ok = 0;
+        int ds_verify_ok = dgood[DD_VERIFY] && dgood[DD_VERIFY_TAMPERED];
         int ok[N_OPS] = {
             [OP_VERIFY_SAME] = verify_ok, [OP_VERIFY_MANY] = verify_ok, [OP_VERIFY_FAST_SAME] = verify_ok && fast_ok,
             [OP_VERIFY_BATCH] = batch_ok, [OP_SIGN] = good[D_SIGN], [OP_SIGN_KNOWN_PUB] = known_pub_ok,
             [OP_PUB_CREATE] = good[D_PUB_CREATE], [OP_PUB_COMPRESS] = good[D_PUB_COMPRESS], [OP_SECKEY_VERIFY] = seckey_ok,
             [OP_ECDH] = good[D_ECDH], [OP_TWEAK_MUL] = good[D_TWEAK_MUL], [OP_TWEAK_ADD] = good[D_TWEAK_ADD],
+            [OP_NOSTR_VERIFY] = ds_verify_ok, [OP_NOSTR_VERIFY_FAST] = ds_verify_ok && ds_fast_ok,
+            [OP_NOSTR_BATCH] = ds_batch_ok, [OP_NOSTR_ECDH] = dgood[DD_ECDH] && dd[DD_ECDH].ok,
         };
 
         timing t[N_OPS];
@@ -505,7 +702,7 @@ int main(int argc, char **argv) {
         for (int op = 0; op < N_OPS; op++) {
             if (!t[op].timed) continue;
             const char *ki = "";
-            if (op == OP_VERIFY_BATCH && is.ki1) ki = "\"KI-1\"";
+            if ((op == OP_VERIFY_BATCH || op == OP_NOSTR_BATCH) && is.ki1) ki = "\"KI-1\"";
             if (op == OP_SIGN_KNOWN_PUB && is.ki2) ki = "\"KI-2\"";
             fprintf(o, "%s\n    { \"op\": \"%s\", \"library\": \"%s\", \"binding\": \"c\", \"median_ns\": %.1f, \"p5_ns\": %.1f, \"p95_ns\": %.1f, \"samples\": %d, \"correct\": %s, \"known_issues\": [%s] }",
                     first_row ? "" : ",", OP_NAMES[op], b->name, t[op].median, t[op].p5, t[op].p95, t[op].samples,
@@ -519,5 +716,6 @@ int main(int argc, char **argv) {
     }
     fprintf(o, "\n  ],\n  \"known_issues_observed\": {%s\n  }\n}\n", issues_json);
     free(vec);
+    free(dsd);
     return (int)(sink & 0); /* keep the sink alive */
 }

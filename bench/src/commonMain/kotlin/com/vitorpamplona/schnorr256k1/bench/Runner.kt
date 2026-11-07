@@ -29,13 +29,14 @@ var sink: Long = 0
 
 /**
  * The Kotlin layers' benchmark, the twin of c/main.c: check every library against
- * vectors/v1.txt, time every frozen operation with the same method (warm-up, samples of at least
+ * vectors/v1.txt and the nostr-v1 dataset, time every frozen operation with the same method (warm-up, samples of at least
  * [sampleNs], nearest-rank percentiles), probe the known issues on separate keys, and render a
- * schema-v1 result (results/SCHEMA.md).
+ * schema-v2 result (results/SCHEMA.md).
  */
 class Runner(
     private val layer: String,
     private val impls: List<Impl>,
+    private val ds: Dataset,
     private val quick: Boolean = false,
     private val log: (String) -> Unit = {},
 ) {
@@ -61,6 +62,10 @@ class Runner(
         ECDH("ecdh.xOnly"),
         TWEAK_MUL("tweak.mul"),
         TWEAK_ADD("tweak.add"),
+        NOSTR_VERIFY("nostr.verify"),
+        NOSTR_VERIFY_FAST("nostr.verifyFast"),
+        NOSTR_BATCH("nostr.verifyBatchByAuthor"),
+        NOSTR_ECDH("nostr.ecdh"),
     }
 
     // ------------------------------------------------------------ correctness
@@ -97,6 +102,36 @@ class Runner(
         return out.mapValues { Vectors.toHex(it.value) }
     }
 
+    /** The dataset digests for [i]'s outputs, in datasets/nostr-v1.txt's order and names. */
+    fun datasetDigests(i: Impl): Map<String, String> {
+        val ok = ByteArray(ds.n)
+        val bad = ByteArray(ds.n)
+        for (e in 0 until ds.n) {
+            ok[e] = if (i.verify(ds.sig[e], ds.id[e], ds.pub[e])) 1 else 0
+            val t = ds.sig[e].copyOf().also { b -> b[63] = (b[63] + 1).toByte() }
+            bad[e] = if (i.verify(t, ds.id[e], ds.pub[e])) 1 else 0
+        }
+        val ecdh = ByteArray(32 * ds.keys.size)
+        ds.keys.forEachIndexed { d, k -> (i.ecdhXOnly(k, v.seckey[d % Vectors.N]) ?: ByteArray(32)).copyInto(ecdh, 32 * d) }
+        return linkedMapOf(
+            "nostr.verify" to Vectors.toHex(sha256(ok)),
+            "nostr.verify.tampered" to Vectors.toHex(sha256(bad)),
+            "nostr.ecdh" to Vectors.toHex(sha256(ecdh)),
+        )
+    }
+
+    /** One page's author groups: batch verify for groups of two or more. */
+    private fun verifyPage(
+        i: Impl,
+        p: Int,
+    ): Boolean {
+        var all = true
+        for (g in ds.pageGroups[p]) {
+            all = all and if (g.sigs.size == 1) i.verify(g.sigs[0], g.msgs[0], g.pub) else i.verifyBatch(g.pub, g.sigs, g.msgs)
+        }
+        return all
+    }
+
     private class Correctness(
         val ok: Map<Op, Boolean>,
         val knownPubWrongOnlyOddY: Boolean,
@@ -126,6 +161,12 @@ class Runner(
         }
         val batchOk = !i.hasVerifyBatch || i.verifyBatch(v.xOnly[0], v.batchSig, v.batchMsg)
         val verifyOk = good["verify"] == true && good["verify.tampered"] == true
+
+        val dd = datasetDigests(i).mapValues { (k, h) -> DatasetV1.digests[k] == h }
+        dd.filterValues { !it }.keys.forEach { log("${i.library}: $it digest differs from the dataset's") }
+        val dsVerifyOk = dd["nostr.verify"] == true && dd["nostr.verify.tampered"] == true
+        val dsFastOk = !i.hasVerifyFast || (0 until ds.n).all { i.verifyFast(ds.sig[it], ds.id[it], ds.pub[it]) }
+        val dsBatchOk = !i.hasVerifyBatch || (0 until ds.pages).all { verifyPage(i, it) }
         return Correctness(
             mapOf(
                 Op.VERIFY_SAME to verifyOk,
@@ -140,6 +181,10 @@ class Runner(
                 Op.ECDH to (good["ecdh.xOnly"] == true),
                 Op.TWEAK_MUL to (good["tweak.mul"] == true),
                 Op.TWEAK_ADD to (good["tweak.add"] == true),
+                Op.NOSTR_VERIFY to dsVerifyOk,
+                Op.NOSTR_VERIFY_FAST to (dsVerifyOk && dsFastOk),
+                Op.NOSTR_BATCH to dsBatchOk,
+                Op.NOSTR_ECDH to (dd["nostr.ecdh"] == true),
             ),
             !knownPubOk && knownPubOddOnly,
         )
@@ -196,6 +241,26 @@ class Runner(
                     val x = k++ % m
                     acc += i.tweakAdd(v.seckey[x], v.tweak[x])?.get(7) ?: 0
                 }
+            Op.NOSTR_VERIFY ->
+                for (r in 0 until n) {
+                    val e = k++ % ds.n
+                    if (i.verify(ds.sig[e], ds.id[e], ds.pub[e])) acc++
+                }
+            Op.NOSTR_VERIFY_FAST ->
+                for (r in 0 until n) {
+                    val e = k++ % ds.n
+                    if (i.verifyFast(ds.sig[e], ds.id[e], ds.pub[e])) acc++
+                }
+            Op.NOSTR_BATCH -> {
+                // One call is one page.
+                if (!i.hasVerifyBatch) return false
+                for (r in 0 until n) if (verifyPage(i, k++ % ds.pages)) acc++
+            }
+            Op.NOSTR_ECDH ->
+                for (r in 0 until n) {
+                    val d = k++ % ds.keys.size
+                    acc += i.ecdhXOnly(ds.keys[d], v.seckey[d % m])?.get(7) ?: 0
+                }
         }
         next = k
         sink += acc
@@ -224,7 +289,12 @@ class Runner(
             if (s.elapsedNow().inWholeNanoseconds >= sampleNs) break
             n *= 2
         }
-        val perCall = if (op == Op.VERIFY_BATCH) Vectors.BATCH.toDouble() else 1.0
+        val perCall =
+            when (op) {
+                Op.VERIFY_BATCH -> Vectors.BATCH.toDouble()
+                Op.NOSTR_BATCH -> Dataset.PAGE.toDouble()
+                else -> 1.0
+            }
         val values =
             DoubleArray(nSamples) {
                 val s = clock.markNow()
@@ -346,7 +416,7 @@ class Runner(
 
     // ------------------------------------------------------------ result
 
-    /** Checks, times and probes every library; returns the schema-v1 JSON. */
+    /** Checks, times and probes every library; returns the schema-v2 JSON. */
     fun runAll(
         context: Map<String, String>,
         only: String? = null,
@@ -368,7 +438,7 @@ class Runner(
                 val tm = t[op] ?: continue
                 val kis =
                     buildList {
-                        if (op == Op.VERIFY_BATCH && ki["KI-1"] == true) add("\"KI-1\"")
+                        if ((op == Op.VERIFY_BATCH || op == Op.NOSTR_BATCH) && ki["KI-1"] == true) add("\"KI-1\"")
                         if (op == Op.SIGN_KNOWN_PUB && ki["KI-2"] == true) add("\"KI-2\"")
                     }.joinToString(", ")
                 if (rows.isNotEmpty()) rows.append(",")
@@ -383,7 +453,8 @@ class Runner(
         }
         val ctx = context.entries.joinToString(",\n") { "    \"${it.key}\": ${jsonString(it.value)}" }
         val libs = impls.filter { only == null || it.library == only }.joinToString(", ") { "\"${it.library}\": ${jsonString(it.version)}" }
-        return "{\n  \"schema\": 1,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
+        return "{\n  \"schema\": 2,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
+            "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"${ds.sha256Hex}\",\n" +
             "  \"layer\": \"$layer\",\n  \"quick\": $quick,\n  \"context\": {\n$ctx,\n    \"libraries\": { $libs }\n  },\n" +
             "  \"rows\": [$rows\n  ],\n  \"known_issues_observed\": {$issues\n  }\n}\n"
     }

@@ -44,3 +44,7 @@ actual fun platformContext(): Map<String, String> {
 }
 
 actual fun logErr(message: String) = System.err.println(message)
+
+actual fun readFileBytes(path: String): ByteArray? = runCatching { File(path).readBytes() }.getOrNull()
+
+actual fun environment(name: String): String? = System.getenv(name)

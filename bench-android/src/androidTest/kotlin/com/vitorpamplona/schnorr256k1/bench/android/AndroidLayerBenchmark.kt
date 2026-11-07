@@ -34,7 +34,7 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * Runs the Android layer and writes its schema-v1 result to the test's additional output
+ * Runs the Android layer and writes its schema-v2 result to the test's additional output
  * directory, which AGP copies to build/outputs/connected_android_test_additional_output/.
  *
  * Instrumentation arguments (-Pandroid.testInstrumentationRunnerArguments.<name>=...):
@@ -60,7 +60,7 @@ class AndroidLayerBenchmark {
         ctx.putAll(platformContext())
         ctx["machine"] = args.getString("machine") ?: "unknown"
         ctx["harness"] = args.getString("harness") ?: "unknown"
-        val json = Runner(platformLayer, platformImpls, quick, ::logErr).runAll(ctx)
+        val json = Runner(platformLayer, platformImpls, datasetFromAssets(), quick, ::logErr).runAll(ctx)
 
         val dir =
             args.getString("additionalTestOutputDir")?.let(::File)

@@ -1,8 +1,11 @@
-# Results schema, v1
+# Results schema, v2
 
 Frozen. Renaming an operation, changing what it measures or how a statistic is computed, or
-adding a column, is schema v2. Results with different schema versions or vector digests are
-never put in the same table.
+adding a column, is schema v3. Results with different schema versions, vector digests or
+datasets are never put in the same table.
+
+v2 (2026-11-07) adds the `nostr.*` operations on the nostr-v1 dataset (`datasets/README.md`) and
+the `dataset` and `datasetSha256` fields. No v1 result was ever recorded.
 
 ## Files
 
@@ -12,9 +15,11 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
 
 ```json
 {
-  "schema": 1,
+  "schema": 2,
   "vectors": "v1",
   "vectorsSha256": "<SHA-256 of vectors/v1.txt>",
+  "dataset": "nostr-v1",
+  "datasetSha256": "<SHA-256 of datasets/nostr-v1.bin>",
   "layer": "c | jvm | native | android",
   "quick": false,
   "context": {
@@ -92,6 +97,17 @@ Inputs are the vectors (`vectors/README.md`). "Cycling" means call `k` uses entr
 | `ecdh.xOnly` | cycling, peer `(i + 1) mod N` | parse `02 ‖ x` + `ec_pubkey_tweak_mul` + serialize, take x (as Quartz does through ACINQ) | `ecdh_xonly` | `ecdhXOnly` |
 | `tweak.mul` | cycling: `tpub33[i]` times `seckey[i]` | `ec_pubkey_parse` + `ec_pubkey_tweak_mul` + serialize (33) | `pubkey_tweak_mul` | `pubkeyTweakMul` |
 | `tweak.add` | cycling | `ec_seckey_tweak_add` on a copy | `privkey_tweak_add` | `privkeyTweakAdd` |
+| `nostr.verify` | dataset, cycling through the events in corpus order | as `verify.sameKey` | same | same |
+| `nostr.verifyFast` | same | full verify | `schnorr_verify_fast` | `schnorrVerifyFast` |
+| `nostr.verifyBatchByAuthor` | dataset pages of 200 events; each page's events grouped by author; per event | n/a | `schnorr_verify_batch` per group of 2 or more, `schnorr_verify` for the rest | `schnorrVerifyBatch` / `schnorrVerify` likewise |
+| `nostr.ecdh` | the dataset's 4,926 distinct pubkeys, cycling; key `d` with `seckey[d mod N]` | as `ecdh.xOnly` | `ecdh_xonly` | `ecdhXOnly` |
+
+The `nostr.*` operations are what a client does with what relays send: the corpus mixes a few
+prolific authors with thousands seen once (83% of its events are by an author seen earlier in
+the stream), which neither `verify.sameKey` (one key) nor `verify.manyKeys` (4096 keys in strict
+rotation) shows. Their correctness: every signature verifies and every one with the last byte of
+s incremented does not (`nostr.verify`, `nostr.verify.tampered` in `datasets/nostr-v1.txt`),
+every author group passes, and the ECDH outputs hash to `nostr.ecdh`.
 
 Through a binding (JNI, cinterop), the call is the binding's equivalent, made exactly as an app
 would: ACINQ's `Secp256k1` methods, libschnorr256k1-kmp's `Schnorr256k1` methods.
@@ -100,6 +116,6 @@ would: ACINQ's `Secp256k1` methods, libschnorr256k1-kmp's `Schnorr256k1` methods
 
 | ID | Library | Issue |
 |---|---|---|
-| KI-1 | libschnorr256k1, kotlin | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. |
+| KI-1 | libschnorr256k1, kotlin (fixed in libschnorr256k1-kotlin `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
 | KI-2 | libschnorr256k1 | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. Its `sign.knownPub` row is `correct: false`. |
 | KI-3 | libschnorr256k1 | `ecmult` shares an x-keyed table cache with verify: after a tweak-mul on the odd-y form of a key, verify rejects valid signatures for its x-only form, and after a verify the odd-y tweak-mul is negated. No row is affected: `tweak.mul` runs on points no verification uses (`tpub33`). |
