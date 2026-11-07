@@ -1,0 +1,3 @@
+[submodule "libschnorr256k1-kotlin"]
+	path = libschnorr256k1-kotlin
+	url = https://github.com/vitorpamplona/libschnorr256k1-kotlin
