@@ -1,3 +1,9 @@
 [submodule "libschnorr256k1-kotlin"]
-	path = libschnorr256k1-kotlin
+	path = third_party/libschnorr256k1-kotlin
 	url = https://github.com/vitorpamplona/libschnorr256k1-kotlin
+[submodule "third_party/secp256k1"]
+	path = third_party/secp256k1
+	url = https://github.com/bitcoin-core/secp256k1.git
+[submodule "third_party/libschnorr256k1"]
+	path = third_party/libschnorr256k1
+	url = https://github.com/vitorpamplona/libschnorr256k1.git
