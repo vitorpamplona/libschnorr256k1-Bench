@@ -95,7 +95,17 @@ interface Impl {
         seckey: ByteArray,
         tweak: ByteArray,
     ): ByteArray?
+
+    /**
+     * The operations this library has no call for (results/SCHEMA.md: no row). The runner
+     * neither times nor checks them, and a known-issue probe that needs one reports null.
+     * Batch rows follow [hasVerifyBatch] instead.
+     */
+    val lacks: Set<Runner.Op> get() = emptySet()
 }
 
-/** The libraries this platform has: ACINQ and Kotlin everywhere, libschnorr256k1-kmp where it is published. */
+/**
+ * The libraries this platform has: ACINQ and Kotlin everywhere, libschnorr256k1-kmp where it is
+ * published, and the JVM-only libraries on the JVM.
+ */
 expect val platformImpls: List<Impl>
