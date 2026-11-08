@@ -22,7 +22,8 @@ checks.
 
 **The checks take most of the run.** Reproducing every digest is 4,096 vector entries and
 29,614 dataset events × 2 verifications per library: seconds for coincurve, minutes for the
-fast pure-Python libraries, and about two CPU-hours for the BIP-340 reference (80 ms a verify).
+fast pure-Python libraries, and about two CPU-hours for the BIP-340 reference (80 ms a verify). On a shared 4-vCPU cloud VM the checks of all five took 47 minutes, the
+quick timing a few more.
 So the checks run first, for every library, in a process pool (every CPU by default); the
 pool is closed before the first timing, and timing and the probes run in the one main process,
 library after library. `--jobs 1` runs the checks in the main process in c/main.c's order. The
