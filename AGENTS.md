@@ -27,7 +27,8 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
 - `bench-android/`: the android layer, the Runner inside a release instrumentation test
   (`AndroidLayerBenchmark`), plus `AndroidCrossCheckTest`.
 - `scripts/`: `run-host.sh` (c, jvm, native), `run-android.sh`, `run-android-c.sh` (NDK + adb),
-  `table.py` (results to Markdown tables; `--check` for CI).
+  `table.py` (results to Markdown tables; `--check` for CI; `--readme` writes the dedicated runs
+  into README.md's Results, and `--readme --check` fails CI when that section is stale).
 - `third_party/`: submodules. `libschnorr256k1-kotlin` (substituted for the Maven artifact in
   `settings.gradle.kts`), `secp256k1` (at the commit ACINQ 0.24.0 bundles), `libschnorr256k1`.
 
@@ -57,7 +58,7 @@ git submodule update --init --recursive
 scripts/run-host.sh --device "ThinkPad X1 Gen 11" --machine dedicated
 scripts/run-android.sh --machine dedicated            # a device on adb
 scripts/run-android-c.sh --machine dedicated          # needs the NDK
-scripts/table.py                                      # every full run under results/
+scripts/table.py --readme                             # the dedicated runs into README.md
 ```
 
 `--quick` on any script is a smoke run. The Android builds need `ANDROID_HOME` (the included

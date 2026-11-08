@@ -28,6 +28,8 @@ jobs:
           distribution: 'temurin'
           java-version: 21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: README results match results/
+        run: python3 -I scripts/table.py --readme --check
       - name: Cross-check (JVM, Linux Native)
         run: ./gradlew spotlessCheck :bench:jvmTest :bench:linuxX64Test
       - name: Smoke-run the host layers
