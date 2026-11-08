@@ -137,10 +137,20 @@ class Runner(
         val knownPubWrongOnlyOddY: Boolean,
     )
 
+    /** Whether [digest] is the output of an op [i] lacks (its digest is not checked). */
+    private fun lacked(
+        i: Impl,
+        digest: String,
+    ) = i.lacks.any { it.id == digest }
+
     private fun correctness(i: Impl): Correctness {
         val d = digests(i)
         val good = d.mapValues { (k, h) -> VectorsV1.digests[k] == h }
-        good.filterValues { !it }.keys.forEach { log("${i.library}: $it digest differs from vectors") }
+        good
+            .filterValues { !it }
+            .keys
+            .filter { !lacked(i, it) }
+            .forEach { log("${i.library}: $it digest differs from vectors") }
         var fastOk = true
         var knownPubOk = true
         var knownPubOddOnly = true
@@ -163,7 +173,11 @@ class Runner(
         val verifyOk = good["verify"] == true && good["verify.tampered"] == true
 
         val dd = datasetDigests(i).mapValues { (k, h) -> DatasetV1.digests[k] == h }
-        dd.filterValues { !it }.keys.forEach { log("${i.library}: $it digest differs from the dataset's") }
+        dd
+            .filterValues { !it }
+            .keys
+            .filter { !lacked(i, it) }
+            .forEach { log("${i.library}: $it digest differs from the dataset's") }
         val dsVerifyOk = dd["nostr.verify"] == true && dd["nostr.verify.tampered"] == true
         val dsFastOk = !i.hasVerifyFast || (0 until ds.n).all { i.verifyFast(ds.sig[it], ds.id[it], ds.pub[it]) }
         val dsBatchOk = !i.hasVerifyBatch || (0 until ds.pages).all { verifyPage(i, it) }
@@ -198,6 +212,7 @@ class Runner(
         op: Op,
         n: Long,
     ): Boolean {
+        if (op in i.lacks) return false
         var acc = 0L
         var k = next
         val m = Vectors.N
@@ -357,6 +372,7 @@ class Runner(
             }
         // KI-3, on odd-y keys of a separate set: tweak-mul the odd-y point, then verify a valid
         // signature for the x-only form.
+        if (Op.TWEAK_MUL in i.lacks) return linkedMapOf("KI-1" to ki1, "KI-2" to knownPubOddOnly, "KI-3" to null)
         var rejected = 0
         var found = 0
         var k = 0
@@ -394,7 +410,7 @@ class Runner(
         impls.flatMap { i ->
             val c = check(i)
             log("${i.library} (${i.binding}): known issues ${c.knownIssues}")
-            c.correct.filterValues { !it }.keys.mapNotNull { op ->
+            c.correct.filterValues { !it }.keys.filter { it !in i.lacks }.mapNotNull { op ->
                 val ki = COVERS[op]
                 if (ki != null && c.knownIssues[ki] == true) {
                     log("${i.library} ${op.id}: wrong, as $ki says")
