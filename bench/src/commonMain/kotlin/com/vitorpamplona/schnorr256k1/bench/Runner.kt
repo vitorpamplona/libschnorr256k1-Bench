@@ -31,7 +31,7 @@ var sink: Long = 0
  * The Kotlin layers' benchmark, the twin of c/main.c: check every library against
  * vectors/v1.txt and the nostr-v1 dataset, time every frozen operation with the same method (warm-up, samples of at least
  * [sampleNs], nearest-rank percentiles), probe the known issues on separate keys, and render a
- * schema-v2 result (results/SCHEMA.md).
+ * schema-v3 result (results/SCHEMA.md).
  */
 class Runner(
     private val layer: String,
@@ -416,7 +416,7 @@ class Runner(
 
     // ------------------------------------------------------------ result
 
-    /** Checks, times and probes every library; returns the schema-v2 JSON. */
+    /** Checks, times and probes every library; returns the schema-v3 JSON. */
     fun runAll(
         context: Map<String, String>,
         only: String? = null,
@@ -453,7 +453,7 @@ class Runner(
         }
         val ctx = context.entries.joinToString(",\n") { "    \"${it.key}\": ${jsonString(it.value)}" }
         val libs = impls.filter { only == null || it.library == only }.joinToString(", ") { "\"${it.library}\": ${jsonString(it.version)}" }
-        return "{\n  \"schema\": 2,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
+        return "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
             "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"${ds.sha256Hex}\",\n" +
             "  \"layer\": \"$layer\",\n  \"quick\": $quick,\n  \"context\": {\n$ctx,\n    \"libraries\": { $libs }\n  },\n" +
             "  \"rows\": [$rows\n  ],\n  \"known_issues_observed\": {$issues\n  }\n}\n"
