@@ -35,12 +35,12 @@ commit [ACINQ's secp256k1-kmp](https://github.com/ACINQ/secp256k1-kmp) 0.24.0 bu
 
 ## Results
 
-Each row is one library on one layer, ranked by how fast it verifies real Nostr events. The
-library this bench was built for, libschnorr256k1-kotlin, is in bold. Only runs from a dedicated
-machine are recorded: the newest device's here, and every operation of every device in
-[results/report.md](results/report.md). The runs are the JSON files in `results/<layer>/`;
-`scripts/table.py --readme` writes this section and the report from them, and CI fails when
-either is stale.
+One table per operation, verification first: a Nostr client verifies every event every relay
+sends. Each table ranks every library on every layer, with libschnorr256k1-kotlin, the library
+this bench was built for, in bold. Only runs from a dedicated machine are recorded: the newest
+device's here, and every device in [results/report.md](results/report.md). The runs are the JSON
+files in `results/<layer>/`; `scripts/table.py --readme` writes this section and the report from
+them, and CI fails when either is stale.
 
 <!-- results:begin: scripts/table.py --readme writes this section; do not edit it by hand -->
 

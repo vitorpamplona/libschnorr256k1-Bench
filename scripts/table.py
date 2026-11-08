@@ -5,7 +5,7 @@
     scripts/table.py results/jvm/X.json results/c/Y.json
     scripts/table.py --quick DIR         # include --quick runs (smoke runs; not comparable)
     scripts/table.py --check --quick DIR # also exit 1 on a wrong row no known issue explains (CI)
-    scripts/table.py --readme            # README.md's headline and results/report.md from the dedicated runs
+    scripts/table.py --readme            # README.md's ranked tables and results/report.md from the dedicated runs
     scripts/table.py --readme --check    # exit 1 if either is not what --readme would write (CI)
 
 Each device gets one table per layer: a row per operation, a column per library, with the median in
@@ -14,7 +14,7 @@ microseconds and, beside it, the ratio to libsecp256k1 in the same layer. A wron
 schema, vectors or vectors file hash are not this checkout's are skipped with a warning.
 
 --readme uses only full runs from a dedicated machine under results/ (never --quick or shared runs,
-results/SCHEMA.md). It writes the headline table, ranked by HEADLINE_RANK, for the device of the
+results/SCHEMA.md). It writes one ranked table per operation (README_OPS, verification first) for the device of the
 newest run between README_BEGIN and README_END in README.md, and every table to results/report.md.
 """
 
@@ -152,16 +152,27 @@ def unexplained(runs):
     return bad
 
 
-# The README's headline: one row per layer and library, ranked by the real-traffic verify.
-HEADLINE_RANK = "nostr.verify"
-HEADLINE_OPS = [
-    ("nostr.verify", "verify, real events"),
-    ("nostr.verifyBatchByAuthor", "batch by author, per event"),
-    ("verify.manyKeys", "verify, a new key each time"),
-    ("verify.sameKey", "verify, one key"),
-    ("sign", "sign"),
-    ("pubkey.create", "pubkey.create"),
-    ("ecdh.xOnly", "ecdh.xOnly"),
+# The README's tables: one per operation, verification first (a Nostr client verifies every
+# event every relay sends), each ranking every library and layer on the newest device.
+README_OPS = [
+    ("nostr.verify", "Verify real Nostr events",
+     "the 29,614 events of `datasets/nostr-v1` in the order relays sent them: a few prolific authors and thousands seen once"),
+    ("verify.manyKeys", "Verify, a new key each time", "4,096 keys in strict rotation, so no per-key cache helps"),
+    ("verify.sameKey", "Verify, one key", "the same key every call: the best case for a per-key cache"),
+    ("nostr.verifyBatchByAuthor", "Batch verify, real events",
+     "the dataset in pages of 200, each page's events batched by author; per event"),
+    ("verifyBatch200.perSig", "Batch verify, 200 signatures by one key", "per signature"),
+    ("nostr.verifyFast", "Fast verify, real events", "a library's fast verify where it has one, else its full verify"),
+    ("verifyFast.sameKey", "Fast verify, one key", "likewise"),
+    ("sign", "Sign", "BIP-340 with aux randomness, from the secret key"),
+    ("sign.knownPub", "Sign with a known public key", "where the library can skip deriving it"),
+    ("pubkey.create", "Create a public key", "uncompressed, 65 bytes"),
+    ("nostr.ecdh", "ECDH with real authors' keys", "x-only ECDH against the dataset's 4,926 distinct pubkeys (NIP-04/NIP-44)"),
+    ("ecdh.xOnly", "ECDH", "x-only, against 4,096 keys"),
+    ("tweak.mul", "Tweak-multiply a public key", "a compressed point times a scalar"),
+    ("pubkey.compress", "Compress a public key", "65 bytes to 33"),
+    ("tweak.add", "Tweak-add a secret key", "(secret + tweak) mod n"),
+    ("seckey.verify", "Check a secret key", "0 < key < n"),
 ]
 HIGHLIGHT = "kotlin"  # the library this bench was built for, in bold
 REPORT = os.path.join(ROOT, "results", "report.md")
@@ -178,39 +189,54 @@ def latest_by_layer(runs):
     return sorted(latest.values(), key=lambda r: layer_order(r["layer"]))
 
 
-def headline(runs):
-    """The ranked table for the device of the newest dedicated run."""
-    device = max(runs, key=lambda r: r["context"]["date"])["context"]["device"]
-    layers = latest_by_layer([r for r in runs if r["context"]["device"] == device])
-    rows = []
+def op_table(op, layers):
+    """One operation ranked: every library on every layer that has it; wrong results last, unranked."""
+    ranked, wrong = [], []
     for r in layers:
         by = {(row["op"], row["library"]): row for row in r["rows"]}
         for lib in libraries(r):
-            if (HEADLINE_RANK, lib) in by:
-                rows.append((r, lib, by))
-    rows.sort(key=lambda x: x[2][(HEADLINE_RANK, x[1])]["median_ns"])
-    head = "| # | layer | library | binding | " + " | ".join(t for _, t in HEADLINE_OPS) + " |"
-    out = [head, "|---:|---|---|---|" + "---:|" * len(HEADLINE_OPS)]
-    for i, (r, lib, by) in enumerate(rows, 1):
-        binding = by[(HEADLINE_RANK, lib)]["binding"]
-        cells = [str(i), r["layer"], f"`{lib}`", binding]
-        cells += [cell(by.get((op, lib)), by.get((op, REFERENCE))) for op, _ in HEADLINE_OPS]
+            row = by.get((op, lib))
+            if row is not None:
+                (ranked if row["correct"] else wrong).append((r, lib, row, by.get((op, REFERENCE))))
+    ranked.sort(key=lambda x: x[2]["median_ns"])
+    out = ["| # | layer | library | binding | µs | vs libsecp256k1 |", "|---:|---|---|---|---:|---:|"]
+    for i, (r, lib, row, ref) in enumerate(ranked + wrong, 1):
+        rank = str(i) if row["correct"] else "–"
+        us = fmt_us(row["median_ns"]) + ("" if row["correct"] else " **wrong**")
+        if row["known_issues"]:
+            us += " " + ",".join(row["known_issues"])
+        ratio = "–"
+        if ref is not None and lib != REFERENCE and ref["median_ns"] > 0:
+            ratio = f"{row['median_ns'] / ref['median_ns']:.2f}x"
+        cells = [rank, r["layer"], f"`{lib}`", row["binding"], us, ratio]
         if lib == HIGHLIGHT:
-            cells = [f"**{c}**" if c != "-" else c for c in cells]
+            cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
         out.append("| " + " | ".join(cells) + " |")
+    return "\n".join(out) if ranked or wrong else None
+
+
+def headline(runs):
+    """A ranked table per operation for the device of the newest dedicated run."""
+    device = max(runs, key=lambda r: r["context"]["date"])["context"]["device"]
+    layers = latest_by_layer([r for r in runs if r["context"]["device"] == device])
     first = layers[0]["context"]
     dates = sorted({r["context"]["date"] for r in layers})
     when = dates[0] if len(dates) == 1 else f"{dates[0]} to {dates[-1]}"
-    intro = (f"Measured on {device} ({first['cpu']}), a dedicated machine, single thread, {when}. "
-             f"Median µs per operation, and in parentheses its ratio to libsecp256k1 in the same "
-             f"layer (below 1x is faster). Ranked by `{HEADLINE_RANK}`: the 29,614 events of "
-             f"`datasets/nostr-v1`, verified in the order relays sent them.\n")
+    parts = [f"Measured on {device} ({first['cpu']}), a dedicated machine, single thread, {when}. "
+             "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 in the "
+             "same layer (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
+             "known issue (below).\n"]
+    for op, title, what in README_OPS:
+        table = op_table(op, layers)
+        if table:
+            parts.append(f"### {title}\n\n`{op}`: {what}.\n\n{table}\n")
     notes = []
     for r in layers:
         c = r["context"]
         libs = ", ".join(f"{k} {v}" for k, v in c["libraries"].items())
         notes.append(f"- {r['layer']}: {c['os']}, {c['runtime']}; {libs}")
-    return intro + "\n" + "\n".join(out) + "\n\n" + "\n".join(notes) + "\n"
+    parts.append("### Versions\n\n" + "\n".join(notes) + "\n")
+    return "\n".join(parts)
 
 
 def readme_section(runs):
