@@ -1,0 +1,7 @@
+# The python layer's libraries, pinned (python/run.sh installs them into python/.venv).
+# The BIP-340 reference and secp256k1lab are vendored under vendor/ (not on PyPI at a release
+# that has what the bench calls).
+coincurve==21.0.0
+ecc==2026.11.7
+embit==0.8.0
+typing_extensions==4.16.0
