@@ -35,8 +35,18 @@ commit [ACINQ's secp256k1-kmp](https://github.com/ACINQ/secp256k1-kmp) 0.24.0 bu
 
 ## Results
 
-Runs go in `results/<layer>/`, one JSON file each; `scripts/table.py` turns them into one
-table per device. Only runs from a dedicated machine are recorded here, and there are none yet.
+Each row is one library on one layer, ranked by how fast it verifies real Nostr events. The
+library this bench was built for, libschnorr256k1-kotlin, is in bold. Only runs from a dedicated
+machine are recorded: the newest device's here, and every operation of every device in
+[results/report.md](results/report.md). The runs are the JSON files in `results/<layer>/`;
+`scripts/table.py --readme` writes this section and the report from them, and CI fails when
+either is stale.
+
+<!-- results:begin: scripts/table.py --readme writes this section; do not edit it by hand -->
+
+No dedicated runs yet.
+
+<!-- results:end -->
 
 ## Known issues
 
@@ -68,12 +78,15 @@ scripts/run-android-c.sh --machine dedicated
 ```
 
 ```bash
-scripts/table.py
+scripts/table.py --readme
 ```
 
 - `run-host.sh` runs the c, jvm and native layers. It needs cmake, a C compiler and a JDK.
 - `run-android.sh` runs the android layer on the device adb sees.
 - `run-android-c.sh` builds `c/` with the NDK (`ANDROID_NDK_HOME`) and runs it on that device.
+- `table.py --readme` writes this README's Results and `results/report.md` from the dedicated
+  runs under `results/`. Commit the JSON files, the README and the report together. Without `--readme`, `table.py` prints the
+  tables of any results you give it, quick and shared runs included.
 - `--quick` makes any of them a smoke run. CI uses it on Linux, macOS and an Android emulator;
   its numbers are never comparable.
 - A dedicated run means a machine doing nothing else: a laptop on AC power, a phone charged,
