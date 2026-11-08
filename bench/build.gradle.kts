@@ -152,6 +152,11 @@ kotlin {
             dependsOn(cMain)
             dependencies {
                 implementation(libs.secp256k1.kmp.jni.jvm)
+                // JVM-only implementations (bench/README-jvm-libraries.md). Bouncy Castle is
+                // pinned on its own: bitcoin-s and nostr-java run on the same resolved bcprov.
+                implementation(libs.bouncycastle.bcprov)
+                implementation(libs.bitcoin.s.crypto)
+                implementation(libs.nostr.java.core)
             }
         }
         androidMain {
@@ -182,7 +187,12 @@ kotlin {
 }
 
 // The tests read the dataset from the checkout (the Android device tests from their APK's assets).
-tasks.withType<Test>().configureEach { environment("BENCH_DATASET", datasetFile.absolutePath) }
+// DISABLE_SECP256K1: bitcoin-s runs its own BIP-340 on Bouncy Castle, not its libsecp256k1 JNI
+// (BitcoinSImpl checks it).
+tasks.withType<Test>().configureEach {
+    environment("BENCH_DATASET", datasetFile.absolutePath)
+    environment("DISABLE_SECP256K1", "true")
+}
 tasks.withType<KotlinNativeTest>().configureEach {
     environment("BENCH_DATASET", datasetFile.absolutePath)
 }
@@ -198,4 +208,5 @@ tasks.register<JavaExec>("runJvm") {
     providers.gradleProperty("args").orNull?.let { args(Regex("""'[^']*'|\S+""").findAll(it).map { m -> m.value.trim('\'') }.toList()) }
     jvmArgs("-Xmx1g")
     environment("BENCH_DATASET", datasetFile.absolutePath)
+    environment("DISABLE_SECP256K1", "true")
 }

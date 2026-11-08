@@ -22,7 +22,8 @@ package com.vitorpamplona.schnorr256k1.bench
 
 import java.io.File
 
-actual val platformImpls: List<Impl> = listOf(AcinqImpl("jni"), CImpl("jni"), KotlinImpl)
+actual val platformImpls: List<Impl> =
+    listOf(AcinqImpl("jni"), CImpl("jni"), KotlinImpl, BouncyCastleImpl, BitcoinSImpl, NostrJavaImpl)
 
 actual val platformLayer: String = "jvm"
 
