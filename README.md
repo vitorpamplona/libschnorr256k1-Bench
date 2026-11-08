@@ -22,10 +22,14 @@ commit [ACINQ's secp256k1-kmp](https://github.com/ACINQ/secp256k1-kmp) 0.24.0 bu
   derived from SHA-256 of fixed labels. Before timing, every library's outputs must hash to the
   digests in `vectors/v1.txt`; a library that differs is still timed, but its row says
   `correct: false`.
+- **Real traffic too:** [`datasets/`](datasets/README.md), the 29,614 signed events of an
+  Amethyst startup session in 2024 (id, pubkey, sig), by 4,926 authors. The `nostr.*`
+  operations verify them in the order relays sent them, verify them in pages batched by author,
+  and run ECDH against their authors' keys. Every library must accept every signature.
 - **One method:** the same runner in C (`c/main.c`) and Kotlin (`bench/.../Runner.kt`): 1 s
   warm-up per operation, then 20 samples of at least 100 ms each, median and 5th/95th percentile
   per call. No JMH or Jetpack Microbenchmark, so the layers are comparable.
-- **One format:** [`results/SCHEMA.md`](results/SCHEMA.md), frozen. It covers the twelve
+- **One format:** [`results/SCHEMA.md`](results/SCHEMA.md), frozen. It covers the sixteen
   operations, the exact call each library makes for each one, and the known issues the runners
   probe for.
 

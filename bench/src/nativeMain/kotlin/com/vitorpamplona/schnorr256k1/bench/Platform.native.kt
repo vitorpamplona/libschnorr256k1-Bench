@@ -21,12 +21,22 @@
 package com.vitorpamplona.schnorr256k1.bench
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.usePinned
+import platform.posix.SEEK_END
+import platform.posix.SEEK_SET
+import platform.posix.fclose
 import platform.posix.fflush
+import platform.posix.fopen
 import platform.posix.fprintf
+import platform.posix.fread
+import platform.posix.fseek
+import platform.posix.ftell
+import platform.posix.getenv
 import platform.posix.stderr
 import platform.posix.uname
 import platform.posix.utsname
@@ -52,6 +62,25 @@ private fun unameOs(): String? =
 
 /** The CPU's marketing name, from the OS (/proc/cpuinfo, sysctl), or null. */
 internal expect fun nativeCpuName(): String?
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun readFileBytes(path: String): ByteArray? {
+    val f = fopen(path, "rb") ?: return null
+    try {
+        if (fseek(f, 0, SEEK_END) != 0) return null
+        val len = ftell(f)
+        if (len < 0 || fseek(f, 0, SEEK_SET) != 0) return null
+        val out = ByteArray(len.toInt())
+        if (out.isEmpty()) return out
+        val read = out.usePinned { fread(it.addressOf(0), 1u, len.toULong(), f) }
+        return if (read == len.toULong()) out else null
+    } finally {
+        fclose(f)
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun environment(name: String): String? = getenv(name)?.toKString()
 
 @OptIn(ExperimentalForeignApi::class)
 actual fun logErr(message: String) {

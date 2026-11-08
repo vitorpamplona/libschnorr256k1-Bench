@@ -30,7 +30,8 @@ import kotlin.test.assertTrue
  * other library gives its results, except where an observed known issue explains it.
  */
 class CrossCheckTest {
-    private val runner = Runner(platformLayer, platformImpls, log = ::println)
+    private val dataset = loadDataset(null) // BENCH_DATASET, set by the Gradle test tasks
+    private val runner = Runner(platformLayer, platformImpls, dataset, log = ::println)
     private val reference = platformImpls.first { it.library == "libsecp256k1" }
 
     @Test
@@ -39,6 +40,14 @@ class CrossCheckTest {
         assertEquals(VectorsV1.digests.keys, digests.keys)
         val wrong = digests.filter { (k, h) -> VectorsV1.digests[k] != h }.keys
         assertTrue(wrong.isEmpty(), "libsecp256k1 does not reproduce vectors/v1.txt: $wrong")
+    }
+
+    @Test
+    fun theReferenceAcceptsEveryDatasetSignature() {
+        assertEquals(DatasetV1.EVENTS, dataset.n)
+        val digests = runner.datasetDigests(reference)
+        val wrong = digests.filter { (k, h) -> DatasetV1.digests[k] != h }.keys
+        assertTrue(wrong.isEmpty(), "libsecp256k1 does not reproduce datasets/nostr-v1.txt: $wrong")
     }
 
     @Test

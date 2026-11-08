@@ -26,5 +26,19 @@ expect val platformLayer: String
 /** The run context this platform can tell about itself: os, cpu, runtime, device. */
 expect fun platformContext(): Map<String, String>
 
+/** A whole file, or null if it cannot be read. */
+expect fun readFileBytes(path: String): ByteArray?
+
+/** An environment variable (BENCH_DATASET: the dataset's path, for the tests and runJvm). */
+expect fun environment(name: String): String?
+
+/** The dataset at [path], else at BENCH_DATASET; fails if neither is readable. */
+fun loadDataset(path: String?): Dataset {
+    val p = path ?: environment("BENCH_DATASET") ?: error("no dataset: pass --dataset FILE or set BENCH_DATASET")
+    val ds = Dataset(readFileBytes(p) ?: error("cannot read the dataset at $p"))
+    check(ds.sha256Hex == DatasetV1.FILE_SHA256) { "$p is not datasets/nostr-v1.bin (sha256 ${ds.sha256Hex})" }
+    return ds
+}
+
 /** Progress messages, kept off the JSON on stdout. */
 expect fun logErr(message: String)

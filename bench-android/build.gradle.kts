@@ -35,6 +35,34 @@ android {
     }
 }
 
+// datasets/nostr-v1.bin as an asset of the instrumentation APK, which the tests read.
+abstract class DatasetAssetTask : DefaultTask() {
+    @get:InputFile
+    abstract val dataset: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        out.mkdirs()
+        dataset.get().asFile.copyTo(File(out, "nostr-v1.bin"))
+    }
+}
+
+val datasetAsset =
+    tasks.register<DatasetAssetTask>("datasetAsset") {
+        dataset.set(rootProject.layout.projectDirectory.file("datasets/nostr-v1.bin"))
+    }
+
+androidComponents {
+    onVariants { variant ->
+        variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(datasetAsset, DatasetAssetTask::outputDir)
+    }
+}
+
 dependencies {
     androidTestImplementation(project(":bench"))
     androidTestImplementation(libs.androidx.benchmark.junit4)

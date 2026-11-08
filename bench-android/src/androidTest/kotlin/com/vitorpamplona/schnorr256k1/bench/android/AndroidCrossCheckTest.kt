@@ -34,7 +34,7 @@ import org.junit.runner.RunWith
 class AndroidCrossCheckTest {
     @Test
     fun everyLibraryIsCorrectOrExplainedByAKnownIssue() {
-        val failures = Runner(platformLayer, platformImpls, log = ::logErr).unexplainedFailures()
+        val failures = Runner(platformLayer, platformImpls, datasetFromAssets(), log = ::logErr).unexplainedFailures()
         assertTrue("wrong results no known issue explains: $failures", failures.isEmpty())
     }
 }
