@@ -1,0 +1,21 @@
+[package]
+name = "schnorr256k1-bench-rust"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+publish = false
+description = "The rust layer of libschnorr256k1-bench: BIP-340 libraries called from Rust"
+license = "MIT"
+
+# The libraries under test, at exact versions (Cargo.lock pins the rest). Each with its
+# default features, plus what its BIP-340 / ECDH API needs.
+[dependencies]
+secp256k1 = "=0.33.1"
+k256 = { version = "=0.14.0", features = ["schnorr", "ecdh"] }
+schnorr_fun = "=0.13.0"
+# schnorr_fun's challenge and nonce hash: apps name it as the Schnorr type parameter.
+sha2 = "0.10"
+
+# Cargo's release profile with nothing changed: opt-level 3, no LTO, 16 codegen units,
+# panic = unwind, no target-cpu (so no -C target-cpu=native, as the c layer has no -march).
+[profile.release]
