@@ -73,7 +73,7 @@ for every operation, and what it lacks.
 | `rust` | `rust/` ([README](../rust/README.md)) | libsecp256k1 / rust-secp256k1, k256 / rust, secp256kfun / rust |
 | `go` | `go/` ([README](../go/README.md)) | libsecp256k1 / cgo, btcec / go, p256k1 / go, secp256k1-voi / go, splitsecure / go |
 | `node`, `bun` | `js/` ([README](../js/README.md)) | libsecp256k1 / wasm (tiny-secp256k1), noble-curves / js, noble-secp256k1 / js |
-| `python` | `python/` ([README](../python/README.md)) | see its README |
+| `python` | `python/` ([README](../python/README.md)) | libsecp256k1 / cffi (coincurve), btclib-ecc / python, embit / python, secp256k1lab / python, bip340-reference / python (BIP-340's own reference.py) |
 
 Every runner is a twin of `c/main.c`: the same derivation, checks, operations, inputs, timing,
 probes and JSON. Where a library lacks an operation, its row is composed only from that

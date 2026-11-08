@@ -44,9 +44,11 @@ jobs:
 
   # The other languages' layers on Linux, one job each: rust, go, node, bun, python. Each layer's
   # quick run does its checks before timing; table.py --check fails on a wrong row.
+  # python takes longest: checking BIP-340's reference.py (about 75 ms a verify) against every
+  # digest is most of an hour on four cores.
   layers:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
