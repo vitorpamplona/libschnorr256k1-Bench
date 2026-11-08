@@ -16,6 +16,18 @@ commit [ACINQ's secp256k1-kmp](https://github.com/ACINQ/secp256k1-kmp) 0.24.0 bu
 [libschnorr256k1-kmp](https://github.com/vitorpamplona/libschnorr256k1-kmp), and
 [libschnorr256k1-kotlin](https://github.com/vitorpamplona/libschnorr256k1-kotlin).
 
+To compare with what other Nostr and Bitcoin software runs, every other maintained BIP-340
+implementation we found runs too, each in its own language, with that ecosystem's libsecp256k1
+binding as the reference beside it:
+
+| Layer | Runtime | Libraries |
+|---|---|---|
+| `jvm` | JVM 21 | [Bouncy Castle](https://www.bouncycastle.org/) `BIP340Signer`, [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s), [nostr-java](https://github.com/tcheeric/nostr-java) ([details](bench/README-jvm-libraries.md)) |
+| `rust` | Rust | [rust-secp256k1](https://github.com/rust-bitcoin/rust-secp256k1) (libsecp256k1), [k256](https://github.com/RustCrypto/elliptic-curves), [secp256kfun](https://github.com/LLFourn/secp256kfun) ([details](rust/README.md)) |
+| `go` | Go | libsecp256k1 (cgo), [btcec](https://github.com/btcsuite/btcd), p256k1 (ORLY's), [secp256k1-voi](https://gitlab.com/yawning/secp256k1-voi), [splitsecure](https://github.com/splitsecure/secp256k1-go) ([details](go/README.md)) |
+| `node`, `bun` | Node.js, Bun | [tiny-secp256k1](https://github.com/bitcoinjs/tiny-secp256k1) (libsecp256k1 as WebAssembly), [@noble/curves](https://github.com/paulmillr/noble-curves), [@noble/secp256k1](https://github.com/paulmillr/noble-secp256k1) ([details](js/README.md)) |
+| `python` | CPython | see [python/README.md](python/README.md) |
+
 ## How it measures
 
 - **One set of inputs:** [`vectors/`](vectors/README.md), 4096 keys, messages and tweaks
@@ -81,7 +93,9 @@ scripts/run-android-c.sh --machine dedicated
 scripts/table.py --readme
 ```
 
-- `run-host.sh` runs the c, jvm and native layers. It needs cmake, a C compiler and a JDK.
+- `run-host.sh` runs the c, jvm and native layers, and the rust, go, node, bun and python
+  layers whose toolchain is installed (it says which it skipped). It needs cmake, a C compiler
+  and a JDK; `--layers "c rust"` picks layers.
 - `run-android.sh` runs the android layer on the device adb sees.
 - `run-android-c.sh` builds `c/` with the NDK (`ANDROID_NDK_HOME`) and runs it on that device.
 - `table.py --readme` writes this README's Results and `results/report.md` from the dedicated

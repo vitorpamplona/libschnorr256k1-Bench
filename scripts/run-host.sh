@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Runs the host layers (results/SCHEMA.md): c, jvm and native, on this machine, and writes each
-# result to results/<layer>/<date>-<device>.json.
+# Runs the host layers (results/SCHEMA.md) on this machine: c, jvm, native, rust, go, node, bun
+# and python, and writes each result to results/<layer>/<date>-<device>.json.
 #
 #   scripts/run-host.sh --device "MacBook Pro M3 Pro" --machine dedicated
 #   scripts/run-host.sh --quick --device "CI runner" --machine shared --layers "c jvm"
+#
+# Without --layers it runs every layer whose toolchain is installed (cargo, go, node, bun,
+# python3) and says which it skipped; a layer named in --layers must run.
 #
 # --machine says whether anything else ran meanwhile (results/SCHEMA.md); numbers to publish come
 # from a dedicated machine on AC power with nothing else running.
@@ -13,7 +16,7 @@ cd "$(dirname "$0")/.."
 device=""
 machine=""
 quick=""
-layers="c jvm native"
+layers=""
 out="results"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -29,6 +32,21 @@ done
 [ -n "$device" ] || { echo "--device is required (what the machine is, e.g. \"ThinkPad X1 Gen 11\")" >&2; exit 2; }
 . scripts/common.sh
 require_machine "$machine"
+
+# The toolchain each layer needs beyond a C compiler, cmake and a JDK.
+toolchain() {
+  case "$1" in rust) echo cargo ;; go) echo go ;; node) echo node ;; bun) echo bun ;; python) echo python3 ;; *) echo "" ;; esac
+}
+if [ -z "$layers" ]; then
+  for layer in c jvm native rust go node bun python; do
+    tool=$(toolchain "$layer")
+    if [ -z "$tool" ] || command -v "$tool" > /dev/null; then
+      layers="$layers $layer"
+    else
+      echo "skipping the $layer layer: $tool is not installed" >&2
+    fi
+  done
+fi
 
 ensure_submodules
 harness=$(harness_id)
@@ -64,6 +82,16 @@ for layer in $layers; do
       write native "bench/build/bin/$dir/releaseExecutable/bench.kexe" --dataset datasets/nostr-v1.bin \
         $quick --device "$device" --machine "$machine" --harness "$harness"
       ;;
-    *) echo "unknown layer $layer (c, jvm, native; android: scripts/run-android.sh)" >&2; exit 2 ;;
+    rust|go|python)
+      file=$(result_file "$out" "$layer" "$device" "$quick")
+      "$layer/run.sh" $quick --device "$device" --machine "$machine" --out "$file"
+      echo "wrote $file" >&2
+      ;;
+    node|bun)
+      file=$(result_file "$out" "$layer" "$device" "$quick")
+      js/run.sh --runtime "$layer" $quick --device "$device" --machine "$machine" --out "$file"
+      echo "wrote $file" >&2
+      ;;
+    *) echo "unknown layer $layer (c, jvm, native, rust, go, node, bun, python; android: scripts/run-android.sh)" >&2; exit 2 ;;
   esac
 done

@@ -33,13 +33,50 @@ jobs:
       - name: Cross-check (JVM, Linux Native)
         run: ./gradlew spotlessCheck :bench:jvmTest :bench:linuxX64Test
       - name: Smoke-run the host layers
-        run: scripts/run-host.sh --quick --device "GitHub ubuntu-latest" --machine shared --out build/ci-results
+        run: scripts/run-host.sh --quick --device "GitHub ubuntu-latest" --machine shared --layers "c jvm native" --out build/ci-results
       - name: Check every row
         shell: bash # pipefail: the check's exit code, not tee's
         run: python3 -I scripts/table.py --check --quick build/ci-results | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         with:
           name: results-linux
+          path: build/ci-results
+
+  # The other languages' layers on Linux, one job each: rust, go, node, bun, python. Each layer's
+  # quick run does its checks before timing; table.py --check fails on a wrong row.
+  layers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        layer: [rust, go, node, bun, python]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - if: matrix.layer == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - if: matrix.layer == 'node' || matrix.layer == 'bun'
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - if: matrix.layer == 'bun'
+        uses: oven-sh/setup-bun@v2
+      - if: matrix.layer == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Smoke-run the ${{ matrix.layer }} layer
+        run: scripts/run-host.sh --quick --device "GitHub ubuntu-latest" --machine shared --layers ${{ matrix.layer }} --out build/ci-results
+      - name: Check every row
+        shell: bash # pipefail: the check's exit code, not tee's
+        run: python3 -I scripts/table.py --check --quick build/ci-results | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: results-${{ matrix.layer }}
           path: build/ci-results
 
   # The android layer (Kotlin runner in a release instrumentation test) and the c layer on Android
@@ -99,7 +136,7 @@ jobs:
       - name: Cross-check on Kotlin/Native
         run: ./gradlew -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8" :bench:macosArm64Test
       - name: Smoke-run the host layers
-        run: scripts/run-host.sh --quick --device "GitHub macos-latest" --machine shared --out build/ci-results
+        run: scripts/run-host.sh --quick --device "GitHub macos-latest" --machine shared --layers "c jvm native" --out build/ci-results
       - name: Check every row
         shell: bash # pipefail: the check's exit code, not tee's
         run: python3 -I scripts/table.py --check --quick build/ci-results | tee -a "$GITHUB_STEP_SUMMARY"

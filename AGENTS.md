@@ -1,7 +1,8 @@
 # libschnorr256k1-bench
 
 Benchmarks and cross-checks of BIP-340 Schnorr / secp256k1 implementations, on every layer an
-app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libraries:
+app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libraries were the
+start:
 
 | `library` | What | Bindings |
 |---|---|---|
@@ -9,12 +10,18 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
 | `libschnorr256k1` | libschnorr256k1 (C) | C; libschnorr256k1-kmp (JNI, cinterop on Apple) |
 | `kotlin` | libschnorr256k1-kotlin (pure Kotlin), built from the submodule | none |
 
+Every other maintained BIP-340 implementation runs beside them, for comparison: more JVM
+libraries in `bench/` (`bench/README-jvm-libraries.md`), and one layer per language, `rust/`,
+`go/`, `js/` (the `node` and `bun` layers) and `python/`, each a twin of `c/main.c` with that
+ecosystem's libsecp256k1 binding as its reference. Each layer's README lists its libraries and
+their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
+
 ## Layout
 
 - `vectors/`: the inputs (v1, derived from SHA-256 of labels) and `v1.txt`, the digests every
   library's outputs must match. `datasets/`: `nostr-v1.bin`, 29,614 real signed Nostr events
   (id, pubkey, sig) from nostrLibBench's corpus, `nostr-v1.txt` (its digests) and the script
-  that extracts it. `results/SCHEMA.md`: the frozen result format (v2), the sixteen
+  that extracts it. `results/SCHEMA.md`: the frozen result format (v3), the sixteen
   operations with the exact call per library, and the known issues (KI-1..KI-3).
 - `c/`: the c layer. `main.c` (checks, timing, known-issue probes, JSON), `vectors.c` (its own
   SHA-256 and the derivation), one `backend_*.c` per library, `CMakeLists.txt` (both libraries
@@ -26,8 +33,10 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
   `commonTest/CrossCheckTest` runs the checks without the timing.
 - `bench-android/`: the android layer, the Runner inside a release instrumentation test
   (`AndroidLayerBenchmark`), plus `AndroidCrossCheckTest`.
-- `scripts/`: `run-host.sh` (c, jvm, native), `run-android.sh`, `run-android-c.sh` (NDK + adb),
-  `table.py` (results to Markdown tables; `--check` for CI; `--readme` writes the dedicated runs
+- `rust/`, `go/`, `js/`, `python/`: the other languages' layers, each with `run.sh` (build and
+  run) and a README (libraries, licenses, the call per operation).
+- `scripts/`: `run-host.sh` (c, jvm, native, and rust, go, node, bun, python), `run-android.sh`,
+  `run-android-c.sh` (NDK + adb), `table.py` (results to Markdown tables; `--check` for CI; `--readme` writes the dedicated runs
   into README.md's Results, and `--readme --check` fails CI when that section is stale).
 - `third_party/`: submodules. `libschnorr256k1-kotlin` (substituted for the Maven artifact in
   `settings.gradle.kts`), `secp256k1` (at the commit ACINQ 0.24.0 bundles), `libschnorr256k1`.
@@ -37,7 +46,9 @@ app runs them from: C calling C, the JVM, Kotlin/Native and Android. Three libra
 - **Same inputs, same work, same method.** Every library gets the vectors' bytes and is asked
   for the same output format; when it lacks an operation, its adapter says how it is emulated
   (libsecp256k1's x-only ECDH is a tweak-mul of 02||x) or it has no row. The C and Kotlin
-  runners time the same way (results/SCHEMA.md `samples`): change one, change the other.
+  runners time the same way (results/SCHEMA.md `samples`): change one, change the other, and so
+  do the rust, go, js and python runners. A library's missing operation is composed only from its
+  own public calls, or has no row: the harness never does curve or scalar arithmetic for it.
 - **The schema is frozen.** A new operation, column or statistic, or a change to what one
   measures, is the next schema version (results/SCHEMA.md); so is any change to the vectors or a
   dataset (a new name and digest file).
