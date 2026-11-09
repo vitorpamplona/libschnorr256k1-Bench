@@ -102,7 +102,7 @@ Run-level fields:
 
 | Field | Definition |
 |---|---|
-| `quick` | `--quick`: 0.2 s warm-up, five samples of at least 20 ms. A smoke run (CI): its numbers are never compared or published. |
+| `quick` | `--quick`: 0.2 s warm-up, five samples of at least 20 ms. A smoke run: its numbers are never compared or published. (CI times nothing; it runs only the checks.) |
 | `known_issues_observed` | Per library, whether each known issue reproduced in this run's probes (on keys apart from the vectors, after the timing): `true`, `false`, or `null` when the library lacks the operation. |
 | `context.machine` | `dedicated`: nothing else ran (a laptop on AC power, a phone charged, cool and in flight mode). `shared`: anything else, a cloud VM or CI runner included. Only dedicated runs are published. |
 

@@ -5,13 +5,17 @@
  *
  *   bench vectors                      print the v1 digests (vectors/v1.txt), from libsecp256k1
  *   bench dataset FILE                 print the digests of a dataset (datasets/nostr-v1.txt)
+ *   bench check --vectors FILE --dataset DATA --dataset-digests FILE [--library NAME]
+ *                                      the checks and probes of run, without the timing (CI): exit 1
+ *                                      on a wrong result no observed known issue explains, or a known
+ *                                      issue on the reference
  *   bench run --vectors FILE --dataset DATA --dataset-digests FILE [opts]
  *                                      check every library against both, time every operation,
  *                                      print a schema-v3 result (results/SCHEMA.md) as JSON
  *     --library NAME     only this library (libsecp256k1 | libschnorr256k1)
  *     --device TEXT      context.device       --machine dedicated|shared   context.machine
  *     --harness COMMIT   context.harness (default: this checkout's commit at configure time)
- *     --quick            short warm-up and samples, for CI smoke runs (numbers not comparable)
+ *     --quick            short warm-up and samples, for smoke runs (numbers not comparable)
  */
 #define _POSIX_C_SOURCE 200809L
 #define _DARWIN_C_SOURCE /* sysctlbyname, which _POSIX_C_SOURCE hides on macOS */
@@ -554,7 +558,8 @@ int main(int argc, char **argv) {
         }
         return 0;
     }
-    if (strcmp(argv[1], "run") != 0) die("unknown command");
+    const int check_only = strcmp(argv[1], "check") == 0;
+    if (!check_only && strcmp(argv[1], "run") != 0) die("unknown command");
 
     const char *vec_path = NULL, *ds_path = NULL, *dsd_path = NULL, *only = NULL, *device = "unknown", *machine = "unknown", *harness = BENCH_HARNESS_VERSION;
     int quick = 0;
@@ -593,7 +598,9 @@ int main(int argc, char **argv) {
     time_t tt = time(NULL);
     strftime(date, sizeof date, "%Y-%m-%d", gmtime(&tt));
 
-    FILE *o = stdout;
+    FILE *o = check_only ? fopen("/dev/null", "w") : stdout; /* check: the same pass, no JSON */
+    if (!o) die("cannot open /dev/null");
+    int unexplained = 0;
     fprintf(o, "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
     fprintf(o, "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"%s\",\n  \"layer\": \"c\",\n", ds_sha);
     fprintf(o, "  \"quick\": %s,\n  \"context\": {\n    \"date\": \"%s\",\n    \"device\": ", quick ? "true" : "false", date);
@@ -694,10 +701,19 @@ int main(int argc, char **argv) {
 
         timing t[N_OPS];
         for (int op = 0; op < N_OPS; op++) {
-            fprintf(stderr, "%s %s...\n", b->name, OP_NAMES[op]);
-            t[op] = time_op(b, (op_id)op, quick);
+            if (!check_only) fprintf(stderr, "%s %s...\n", b->name, OP_NAMES[op]);
+            t[op] = check_only ? (timing){0} : time_op(b, (op_id)op, quick);
         }
         issues is = probe_issues(b, !known_pub_ok && known_pub_odd_only);
+        for (int op = 0; op < N_OPS; op++) {
+            if (ok[op] || (op == OP_SIGN_KNOWN_PUB && is.ki2)) continue; /* COVERS in table.py */
+            fprintf(stderr, "wrong, and no known issue explains it: %s %s\n", b->name, OP_NAMES[op]);
+            unexplained++;
+        }
+        if (b == &backend_libsecp256k1 && (is.ki1 || is.ki2 || is.ki3)) {
+            fprintf(stderr, "the reference shows a known issue: the probes are wrong\n");
+            unexplained++;
+        }
 
         for (int op = 0; op < N_OPS; op++) {
             if (!t[op].timed) continue;
@@ -717,5 +733,9 @@ int main(int argc, char **argv) {
     fprintf(o, "\n  ],\n  \"known_issues_observed\": {%s\n  }\n}\n", issues_json);
     free(vec);
     free(dsd);
+    if (check_only) {
+        printf("%s\n", unexplained ? "check failed" : "every library is correct or explained by a known issue");
+        return unexplained ? 1 : (int)(sink & 0);
+    }
     return (int)(sink & 0); /* keep the sink alive */
 }

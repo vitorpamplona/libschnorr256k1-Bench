@@ -5,6 +5,7 @@
 #
 #   scripts/run-android.sh --machine dedicated            # one device connected (adb devices)
 #   ANDROID_SERIAL=emulator-5554 scripts/run-android.sh --quick --machine shared
+#   scripts/run-android.sh --check        # AndroidCrossCheckTest only, no timing (CI)
 #
 # A dedicated run: the phone charged and cool, screen on, nothing else open, flight mode. Emulator
 # numbers say nothing about phones; an emulator run is a correctness check (--quick).
@@ -14,18 +15,25 @@ cd "$(dirname "$0")/.."
 
 machine=""
 quick=""
+check=""
 out="results"
 while [ $# -gt 0 ]; do
   case "$1" in
     --machine) machine="$2"; shift ;;
     --quick) quick="--quick" ;;
+    --check) check=1 ;;
     --out) out="$2"; shift ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
   shift
 done
-require_machine "$machine"
+[ -n "$check" ] || require_machine "$machine"
 ensure_submodules
+
+if [ -n "$check" ]; then
+  exec ./gradlew --console=plain :bench-android:connectedReleaseAndroidTest \
+    -Pandroid.testInstrumentationRunnerArguments.class=com.vitorpamplona.schnorr256k1.bench.android.AndroidCrossCheckTest
+fi
 
 outputs=bench-android/build/outputs/connected_android_test_additional_output
 rm -rf "$outputs"
