@@ -30,7 +30,7 @@ class CImpl(
     override val binding: String,
 ) : Impl {
     override val library = "libschnorr256k1"
-    override val version = "schnorr256k1-kmp 1.0.5"
+    override val version = "schnorr256k1-kmp 1.1.0"
 
     init {
         CLib.ensureLoaded()
@@ -48,14 +48,13 @@ class CImpl(
         aux: ByteArray,
     ) = CLib.schnorrSign(msg, seckey, aux)
 
-    // KI-2: invalid for keys whose public key has odd y.
     override fun signKnownPub(
         msg: ByteArray,
         seckey: ByteArray,
         pub33: ByteArray,
         xOnly: ByteArray,
         aux: ByteArray,
-    ) = CLib.schnorrSignXOnly(msg, seckey, xOnly, aux)
+    ) = CLib.schnorrSignWithPubKey(msg, seckey, pub33, aux)
 
     override fun verify(
         sig: ByteArray,
