@@ -23,14 +23,14 @@ package com.vitorpamplona.schnorr256k1.bench
 import com.vitorpamplona.schnorr256k1.Schnorr256k1 as CLib
 
 /**
- * libschnorr256k1 (C) through libschnorr256k1-kmp: JNI on the JVM and Android, cinterop on
- * Apple. Not on Linux Native: libschnorr256k1-kmp 1.0.5 publishes no linuxX64 artifact.
+ * libschnorr256k1 (C) through libschnorr256k1-kmp: JNI on the JVM and Android. On Apple
+ * (cinterop) again once a release after 1.0.5 is on Maven Central (bench/build.gradle.kts).
  */
 class CImpl(
     override val binding: String,
 ) : Impl {
     override val library = "libschnorr256k1"
-    override val version = "schnorr256k1-kmp 1.0.5"
+    override val version = "schnorr256k1-kmp 1.1.0 (JitPack f19cabc)"
 
     init {
         CLib.ensureLoaded()
@@ -48,14 +48,13 @@ class CImpl(
         aux: ByteArray,
     ) = CLib.schnorrSign(msg, seckey, aux)
 
-    // KI-2: invalid for keys whose public key has odd y.
     override fun signKnownPub(
         msg: ByteArray,
         seckey: ByteArray,
         pub33: ByteArray,
         xOnly: ByteArray,
         aux: ByteArray,
-    ) = CLib.schnorrSignXOnly(msg, seckey, xOnly, aux)
+    ) = CLib.schnorrSignWithPubKey(msg, seckey, pub33, aux)
 
     override fun verify(
         sig: ByteArray,

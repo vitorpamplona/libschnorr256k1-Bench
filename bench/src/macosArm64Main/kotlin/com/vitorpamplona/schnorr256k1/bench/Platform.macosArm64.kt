@@ -31,7 +31,9 @@ import kotlinx.cinterop.value
 import platform.darwin.sysctlbyname
 import platform.posix.size_tVar
 
-actual val platformImpls: List<Impl> = listOf(AcinqImpl("cinterop"), CImpl("cinterop"), KotlinImpl)
+// No CImpl: libschnorr256k1-kmp comes from JitPack for now, which has no Apple targets (cMain in
+// bench/build.gradle.kts).
+actual val platformImpls: List<Impl> = listOf(AcinqImpl("cinterop"), KotlinImpl)
 
 // "Apple M3 Pro", as in About This Mac.
 @OptIn(ExperimentalForeignApi::class)
