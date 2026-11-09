@@ -55,7 +55,7 @@ CALLERS = {"c": "C", "rust": "Rust", "go": "Go", "native": "Kotlin/Native", "jvm
            "android": "Android", "node": "Node.js", "bun": "Bun", "python": "Python"}
 PURE = {"kotlin": "Kotlin", "java": "Java", "scala": "Scala", "rust": "Rust", "go": "Go",
         "js": "JavaScript", "python": "Python"}
-MECHANISMS = {"jni": "JNI", "cinterop": "cinterop", "wasm": "WebAssembly", "cffi": "CFFI",
+MECHANISMS = {"jni": "JNI", "cinterop": "cinterop", "wasm": "wasm", "cffi": "CFFI",
               "rust-secp256k1": "FFI", "cgo": "cgo"}
 
 
