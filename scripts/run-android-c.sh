@@ -4,6 +4,7 @@
 # results (context.os tells them apart).
 #
 #   scripts/run-android-c.sh --machine dedicated
+#   scripts/run-android-c.sh --check      # the checks and probes only (CI): exit 1 on a wrong result
 #
 # Needs the NDK: $ANDROID_NDK_HOME, or the newest $ANDROID_HOME/ndk/<version>
 # (sdkmanager "ndk;<version>"). The same build flags as libschnorr256k1-kmp's Android libraries.
@@ -13,18 +14,20 @@ cd "$(dirname "$0")/.."
 
 machine=""
 quick=""
+check=""
 out="results"
 api=26 # gradle/libs.versions.toml android-minSdk
 while [ $# -gt 0 ]; do
   case "$1" in
     --machine) machine="$2"; shift ;;
     --quick) quick="--quick" ;;
+    --check) check=1 ;;
     --out) out="$2"; shift ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
   shift
 done
-require_machine "$machine"
+[ -n "$check" ] || require_machine "$machine"
 
 ndk="${ANDROID_NDK_HOME:-}"
 if [ -z "$ndk" ] && [ -d "${ANDROID_HOME:-/nonexistent}/ndk" ]; then
@@ -44,6 +47,10 @@ cmake --build "$build" --parallel > /dev/null
 dir=/data/local/tmp/schnorr256k1-bench
 adb shell mkdir -p "$dir"
 adb push "$build/bench" vectors/v1.txt datasets/nostr-v1.bin datasets/nostr-v1.txt "$dir/" > /dev/null
+if [ -n "$check" ]; then
+  # adb shell passes the exit status through (adb 1.0.32+)
+  exec adb shell "cd $dir && ./bench check --vectors v1.txt --dataset nostr-v1.bin --dataset-digests nostr-v1.txt"
+fi
 file=$(result_file "$out" c "$device" "$quick")
 adb shell "cd $dir && ./bench run --vectors v1.txt --dataset nostr-v1.bin --dataset-digests nostr-v1.txt --device '$device' --machine $machine --harness $(harness_id) $quick" > "$file.tmp"
 tr -d '\r' < "$file.tmp" > "$file"

@@ -99,9 +99,12 @@ scripts/table.py --readme
 - `run-android.sh` runs the android layer on the device adb sees.
 - `run-android-c.sh` builds `c/` with the NDK (`ANDROID_NDK_HOME`) and runs it on that device.
 - `table.py --readme` writes this README's Results and `results/report.md` from the dedicated
-  runs under `results/`. Commit the JSON files, the README and the report together. Without `--readme`, `table.py` prints the
-  tables of any results you give it, quick and shared runs included.
-- `--quick` makes any of them a smoke run. CI uses it on Linux, macOS and an Android emulator;
-  its numbers are never comparable.
+  runs under `results/`. Commit the JSON files, the README and the report together. Without
+  `--readme`, `table.py` prints the tables of any results you give it, quick and shared runs
+  included.
+- `--quick` makes any of them a smoke run, whose numbers are never comparable.
+- CI times nothing. On Linux, macOS and an Android emulator it runs each layer's checks
+  (`build/c/bench check`, `:bench:jvmTest`, `<layer>/run.sh --check`, `run-android*.sh --check`):
+  every library's outputs against the vectors and the dataset, and the known-issue probes.
 - A dedicated run means a machine doing nothing else: a laptop on AC power, a phone charged,
   cool and in flight mode.

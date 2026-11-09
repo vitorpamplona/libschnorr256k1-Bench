@@ -57,7 +57,9 @@ their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
   (`Runner.COVERS`, `COVERS` in `table.py`: keep them equal). A new bug gets a KI-n entry in
   SCHEMA.md and a probe in both runners; a fixed one keeps its entry, and its probe reports `false`.
 - **Only numbers from a dedicated machine are published** (`--machine dedicated`: nothing else
-  running, on AC power or charged and cool). CI and cloud VMs are `shared` and run `--quick`.
+  running, on AC power or charged and cool). CI and cloud VMs are `shared`. CI times nothing: it
+  runs each layer's checks (`bench check`, `CrossCheckTest`, `<layer>/run.sh --check`,
+  `run-android*.sh --check`), and a quick run is a local smoke test.
 - Allocation and cycle counts are not in the schema (not reliable on Android); they belong in the
   libraries' own tests.
 
@@ -72,8 +74,8 @@ scripts/run-android-c.sh --machine dedicated          # needs the NDK
 scripts/table.py --readme                             # the dedicated runs into README.md
 ```
 
-`--quick` on any script is a smoke run. The Android builds need `ANDROID_HOME` (the included
-libschnorr256k1-kotlin build reads it too).
+`--quick` on any script is a smoke run; `--check` runs a layer's checks without timing. The
+Android builds need `ANDROID_HOME` (the included libschnorr256k1-kotlin build reads it too).
 
 ## Remotes and pull requests
 
