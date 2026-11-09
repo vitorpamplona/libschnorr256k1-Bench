@@ -25,7 +25,7 @@ import kotlin.time.ExperimentalTime
 
 /**
  * bench [--dataset FILE] [--quick] [--library NAME] [--device TEXT] [--machine dedicated|shared] [--harness COMMIT]
- * Prints a schema-v2 result (results/SCHEMA.md) on stdout. Without --dataset, BENCH_DATASET.
+ * Prints a schema-v3 result (results/SCHEMA.md) on stdout. Without --dataset, BENCH_DATASET.
  */
 @OptIn(ExperimentalTime::class)
 fun main(args: Array<String>) {

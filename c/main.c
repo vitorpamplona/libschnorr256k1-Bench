@@ -7,7 +7,7 @@
  *   bench dataset FILE                 print the digests of a dataset (datasets/nostr-v1.txt)
  *   bench run --vectors FILE --dataset DATA --dataset-digests FILE [opts]
  *                                      check every library against both, time every operation,
- *                                      print a schema-v2 result (results/SCHEMA.md) as JSON
+ *                                      print a schema-v3 result (results/SCHEMA.md) as JSON
  *     --library NAME     only this library (libsecp256k1 | libschnorr256k1)
  *     --device TEXT      context.device       --machine dedicated|shared   context.machine
  *     --harness COMMIT   context.harness (default: this checkout's commit at configure time)
@@ -594,7 +594,7 @@ int main(int argc, char **argv) {
     strftime(date, sizeof date, "%Y-%m-%d", gmtime(&tt));
 
     FILE *o = stdout;
-    fprintf(o, "{\n  \"schema\": 2,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
+    fprintf(o, "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
     fprintf(o, "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"%s\",\n  \"layer\": \"c\",\n", ds_sha);
     fprintf(o, "  \"quick\": %s,\n  \"context\": {\n    \"date\": \"%s\",\n    \"device\": ", quick ? "true" : "false", date);
     json_str(o, device);

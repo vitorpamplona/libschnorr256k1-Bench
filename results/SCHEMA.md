@@ -1,10 +1,14 @@
-# Results schema, v2
+# Results schema, v3
 
 Frozen. Renaming an operation, changing what it measures or how a statistic is computed, or
-adding a column, is schema v3. Results with different schema versions, vector digests or
+adding a column, is schema v4. Results with different schema versions, vector digests or
 datasets are never put in the same table.
 
-v2 (2026-11-07) adds the `nostr.*` operations on the nostr-v1 dataset (`datasets/README.md`) and
+v3 (2026-11-09) adds the `rust`, `go`, `node`, `bun` and `python` layers, and libraries beyond
+the first three on them and on `jvm` (Layers and libraries, below). The operations, inputs,
+columns and statistics are v2's. No v2 result was ever recorded.
+
+v2 (2026-11-07) added the `nostr.*` operations on the nostr-v1 dataset (`datasets/README.md`) and
 the `dataset` and `datasetSha256` fields. No v1 result was ever recorded.
 
 ## Files
@@ -15,12 +19,12 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
 
 ```json
 {
-  "schema": 2,
+  "schema": 3,
   "vectors": "v1",
   "vectorsSha256": "<SHA-256 of vectors/v1.txt>",
   "dataset": "nostr-v1",
   "datasetSha256": "<SHA-256 of datasets/nostr-v1.bin>",
-  "layer": "c | jvm | native | android",
+  "layer": "c | jvm | native | android | rust | go | node | bun | python",
   "quick": false,
   "context": {
     "date": "2026-11-07",
@@ -35,8 +39,8 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
   "rows": [
     {
       "op": "verify.sameKey",
-      "library": "libsecp256k1 | libschnorr256k1 | kotlin",
-      "binding": "c | jni | cinterop | kotlin",
+      "library": "libsecp256k1 | libschnorr256k1 | kotlin | k256 | btcec | noble-curves | ...",
+      "binding": "c | jni | cinterop | kotlin | wasm | cgo | rust-secp256k1 | cffi | java | rust | go | js | python | ...",
       "median_ns": 38400,
       "p5_ns": 37100,
       "p95_ns": 41900,
@@ -51,6 +55,33 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
   }
 }
 ```
+
+## Layers and libraries
+
+`library` names the implementation, `binding` how the layer reaches it: for a binding, the
+binding package or mechanism; for a pure implementation, its language. Every binding to
+bitcoin-core's libsecp256k1 is `libsecp256k1`, one per layer, so each layer's ratios are against
+the reference as that ecosystem calls it. Each layer's README gives every library's exact call
+for every operation, and what it lacks.
+
+| Layer | Runner | Libraries (`library` / `binding`) |
+|---|---|---|
+| `c` | `c/main.c` | libsecp256k1 / c, libschnorr256k1 / c |
+| `jvm` | `bench/` (`Runner.kt`) | libsecp256k1 / jni (ACINQ), libschnorr256k1 / jni, kotlin / kotlin, bouncycastle / java, bitcoin-s / scala, nostr-java / java ([bench/README-jvm-libraries.md](../bench/README-jvm-libraries.md)) |
+| `native` | `bench/` | libsecp256k1 / cinterop, libschnorr256k1 / cinterop (Apple only), kotlin / kotlin |
+| `android` | `bench-android/` | as `jvm`'s first three |
+| `rust` | `rust/` ([README](../rust/README.md)) | libsecp256k1 / rust-secp256k1, k256 / rust, secp256kfun / rust |
+| `go` | `go/` ([README](../go/README.md)) | libsecp256k1 / cgo, btcec / go, p256k1 / go, secp256k1-voi / go, splitsecure / go |
+| `node`, `bun` | `js/` ([README](../js/README.md)) | libsecp256k1 / wasm (tiny-secp256k1), noble-curves / js, noble-secp256k1 / js |
+| `python` | `python/` ([README](../python/README.md)) | libsecp256k1 / cffi (coincurve), btclib-ecc / python, embit / python, secp256k1lab / python, bip340-reference / python (BIP-340's own reference.py) |
+
+Every runner is a twin of `c/main.c`: the same derivation, checks, operations, inputs, timing,
+probes and JSON. Where a library lacks an operation, its row is composed only from that
+library's own public calls (its README says how), or it has no row; the harness never does
+curve or scalar arithmetic for a library. The derived inputs (`pub65`, `sig`, ...) come from the
+layer's libsecp256k1, and every library's outputs are checked against the digests before timing.
+A layer may run each library in its own process (the JIT runtimes `node` and `bun` do, so one
+library's compiled code and heap do not shape another's numbers).
 
 A layer has a row for every operation each of its libraries has (a library without a fast or
 batch verify has no row for it), and a `libraries` entry for each library it ran: the C
@@ -82,6 +113,7 @@ cycles and instructions per operation (need root on Android), and bytes allocate
 ## Operations
 
 Inputs are the vectors (`vectors/README.md`). "Cycling" means call `k` uses entry `k mod N`.
+The calls below are the first three libraries'; the others' are in their layers' READMEs.
 
 | Op | Input | libsecp256k1 call | libschnorr256k1 call | Kotlin call |
 |---|---|---|---|---|
