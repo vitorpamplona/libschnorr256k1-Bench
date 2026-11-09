@@ -9,7 +9,7 @@
     scripts/table.py --readme --check    # exit 1 if either is not what --readme would write (CI)
 
 Each device gets one table per layer: a row per operation, a column per library, with the median in
-microseconds and, beside it, the ratio to libsecp256k1 in the same layer. A wrong result shows as
+microseconds. A wrong result shows as
 "wrong" and the known issue that explains it; an operation a library lacks shows "-". Files whose
 schema, vectors or vectors file hash are not this checkout's are skipped with a warning.
 
@@ -55,7 +55,7 @@ CALLERS = {"c": "C", "rust": "Rust", "go": "Go", "native": "Kotlin/Native", "jvm
            "android": "Android", "node": "Node.js", "bun": "Bun", "python": "Python"}
 PURE = {"kotlin": "Kotlin", "java": "Java", "scala": "Scala", "rust": "Rust", "go": "Go",
         "js": "JavaScript", "python": "Python"}
-MECHANISMS = {"jni": "JNI", "cinterop": "cinterop", "wasm": "WebAssembly", "cffi": "CFFI",
+MECHANISMS = {"jni": "JNI", "cinterop": "cinterop", "wasm": "wasm", "cffi": "CFFI",
               "rust-secp256k1": "FFI", "cgo": "cgo"}
 
 
@@ -119,12 +119,10 @@ def fmt_us(ns):
     return f"{us:.2f}" if us < 10 else f"{us:.1f}"
 
 
-def cell(row, ref):
+def cell(row):
     if row is None:
         return "-"
     text = fmt_us(row["median_ns"])
-    if ref is not None and row["library"] != REFERENCE and ref["median_ns"] > 0:
-        text += f" ({row['median_ns'] / ref['median_ns']:.2f}x)"
     if not row["correct"]:
         text += " **wrong**"
     if row["known_issues"]:
@@ -148,7 +146,7 @@ def render(runs):
         quick = any(r.get("quick") for r in layers)
         out.append(f"### {device}{' (quick, not comparable)' if quick else ''}\n")
         out.append(f"{first['cpu']}; machine: {', '.join(sorted({r['context']['machine'] for r in layers}))}. "
-                   "Median µs per operation (ratio to libsecp256k1 from the same caller).\n")
+                   "Median µs per operation.\n")
         for r in layers:
             libs = libraries(r)
             rows = {(row["op"], row["library"]): row for row in r["rows"]}
@@ -160,7 +158,7 @@ def render(runs):
             for op in OPS:
                 if not any((op, lib) in rows for lib in libs):
                     continue
-                cells = [cell(rows.get((op, lib)), rows.get((op, REFERENCE))) for lib in libs]
+                cells = [cell(rows.get((op, lib))) for lib in libs]
                 out.append(f"| {op} | " + " | ".join(cells) + " |")
             versions = ", ".join(f"{k} {v}" for k, v in c["libraries"].items())
             out.append(f"\n{c['date']}, {c['os']}, {c['runtime']}; {versions}; harness {c['harness']}\n")
@@ -204,7 +202,9 @@ README_OPS = [
     ("tweak.add", "Tweak-add a secret key", "(secret + tweak) mod n"),
     ("seckey.verify", "Check a secret key", "0 < key < n"),
 ]
-HIGHLIGHT = "kotlin"  # the library this bench was built for, in bold
+# Our libraries, in bold: libschnorr256k1-kotlin, and libschnorr256k1 (C) from every caller,
+# directly or through libschnorr256k1-kmp.
+HIGHLIGHT = {"kotlin", "libschnorr256k1"}
 REPORT = os.path.join(ROOT, "results", "report.md")
 
 
@@ -231,19 +231,16 @@ def op_table(op, layers):
         for lib in libraries(r):
             row = by.get((op, lib))
             if row is not None:
-                (ranked if row["correct"] else wrong).append((r, lib, row, by.get((op, REFERENCE))))
+                (ranked if row["correct"] else wrong).append((r, lib, row))
     ranked.sort(key=lambda x: x[2]["median_ns"])
-    out = ["| # | caller | library | via | µs | vs libsecp256k1 |", "|---:|---|---|---|---:|---:|"]
-    for i, (r, lib, row, ref) in enumerate(ranked + wrong, 1):
+    out = ["| # | caller | library | via | µs |", "|---:|---|---|---|---:|"]
+    for i, (r, lib, row) in enumerate(ranked + wrong, 1):
         rank = str(i) if row["correct"] else "–"
         us = fmt_us(row["median_ns"]) + ("" if row["correct"] else " **wrong**")
         if row["known_issues"]:
             us += " " + ",".join(row["known_issues"])
-        ratio = "–"
-        if ref is not None and lib != REFERENCE and ref["median_ns"] > 0:
-            ratio = f"{row['median_ns'] / ref['median_ns']:.2f}x"
-        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us, ratio]
-        if lib == HIGHLIGHT:
+        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us]
+        if lib in HIGHLIGHT:
             cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
         out.append("| " + " | ".join(cells) + " |")
     return "\n".join(out) if ranked or wrong else None
@@ -260,9 +257,8 @@ def headline(runs):
                else "**a shared machine** (a cloud VM: other work may have run beside it, so the numbers are "
                     "noisier than a dedicated run's, which will replace them)")
     parts = [f"Measured on {device} ({first['cpu']}), {machine}, single thread, {when}. "
-             "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 from the "
-             "same caller (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
-             "known issue (below).\n"]
+             "Each table ranks one operation by its median µs per call. A wrong result is listed "
+             "last, unranked; KI-n marks a known issue (below).\n"]
     for op, title, what in README_OPS:
         table = op_table(op, layers)
         if table:
@@ -287,8 +283,8 @@ def readme_section(runs):
 
 def report_text(runs):
     head = ("# Results\n\nWritten by `scripts/table.py --readme` from the dedicated runs under "
-            "`results/`, or, while there are none, the full shared ones (results/SCHEMA.md). One table per device: each layer's newest run, median "
-            "µs per operation and its ratio to libsecp256k1 in the same layer.\n\n")
+            "`results/`, or, while there are none, the full shared ones (results/SCHEMA.md). One table "
+            "per caller on each device, from its newest run: median µs per operation.\n\n")
     return head + (render(runs) if runs else "No runs yet.\n")
 
 
