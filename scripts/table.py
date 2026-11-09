@@ -233,18 +233,15 @@ def op_table(op, layers):
         for lib in libraries(r):
             row = by.get((op, lib))
             if row is not None:
-                (ranked if row["correct"] else wrong).append((r, lib, row, by.get((op, REFERENCE))))
+                (ranked if row["correct"] else wrong).append((r, lib, row))
     ranked.sort(key=lambda x: x[2]["median_ns"])
-    out = ["| # | caller | library | via | µs | vs libsecp256k1 |", "|---:|---|---|---|---:|---:|"]
-    for i, (r, lib, row, ref) in enumerate(ranked + wrong, 1):
+    out = ["| # | caller | library | via | µs |", "|---:|---|---|---|---:|"]
+    for i, (r, lib, row) in enumerate(ranked + wrong, 1):
         rank = str(i) if row["correct"] else "–"
         us = fmt_us(row["median_ns"]) + ("" if row["correct"] else " **wrong**")
         if row["known_issues"]:
             us += " " + ",".join(row["known_issues"])
-        ratio = "–"
-        if ref is not None and lib != REFERENCE and ref["median_ns"] > 0:
-            ratio = f"{row['median_ns'] / ref['median_ns']:.2f}x"
-        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us, ratio]
+        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us]
         if lib in HIGHLIGHT:
             cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
         out.append("| " + " | ".join(cells) + " |")
@@ -262,9 +259,8 @@ def headline(runs):
                else "**a shared machine** (a cloud VM: other work may have run beside it, so the numbers are "
                     "noisier than a dedicated run's, which will replace them)")
     parts = [f"Measured on {device} ({first['cpu']}), {machine}, single thread, {when}. "
-             "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 from the "
-             "same caller (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
-             "known issue (below).\n"]
+             "Each table ranks one operation by its median µs per call. A wrong result is listed "
+             "last, unranked; KI-n marks a known issue (below).\n"]
     for op, title, what in README_OPS:
         table = op_table(op, layers)
         if table:
