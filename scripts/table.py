@@ -9,7 +9,7 @@
     scripts/table.py --readme --check    # exit 1 if either is not what --readme would write (CI)
 
 Each device gets one table per layer: a row per operation, a column per library, with the median in
-microseconds and, beside it, the ratio to libsecp256k1 in the same layer. A wrong result shows as
+microseconds. A wrong result shows as
 "wrong" and the known issue that explains it; an operation a library lacks shows "-". Files whose
 schema, vectors or vectors file hash are not this checkout's are skipped with a warning.
 
@@ -119,12 +119,10 @@ def fmt_us(ns):
     return f"{us:.2f}" if us < 10 else f"{us:.1f}"
 
 
-def cell(row, ref):
+def cell(row):
     if row is None:
         return "-"
     text = fmt_us(row["median_ns"])
-    if ref is not None and row["library"] != REFERENCE and ref["median_ns"] > 0:
-        text += f" ({row['median_ns'] / ref['median_ns']:.2f}x)"
     if not row["correct"]:
         text += " **wrong**"
     if row["known_issues"]:
@@ -148,7 +146,7 @@ def render(runs):
         quick = any(r.get("quick") for r in layers)
         out.append(f"### {device}{' (quick, not comparable)' if quick else ''}\n")
         out.append(f"{first['cpu']}; machine: {', '.join(sorted({r['context']['machine'] for r in layers}))}. "
-                   "Median µs per operation (ratio to libsecp256k1 from the same caller).\n")
+                   "Median µs per operation.\n")
         for r in layers:
             libs = libraries(r)
             rows = {(row["op"], row["library"]): row for row in r["rows"]}
@@ -160,7 +158,7 @@ def render(runs):
             for op in OPS:
                 if not any((op, lib) in rows for lib in libs):
                     continue
-                cells = [cell(rows.get((op, lib)), rows.get((op, REFERENCE))) for lib in libs]
+                cells = [cell(rows.get((op, lib))) for lib in libs]
                 out.append(f"| {op} | " + " | ".join(cells) + " |")
             versions = ", ".join(f"{k} {v}" for k, v in c["libraries"].items())
             out.append(f"\n{c['date']}, {c['os']}, {c['runtime']}; {versions}; harness {c['harness']}\n")
@@ -285,8 +283,8 @@ def readme_section(runs):
 
 def report_text(runs):
     head = ("# Results\n\nWritten by `scripts/table.py --readme` from the dedicated runs under "
-            "`results/`, or, while there are none, the full shared ones (results/SCHEMA.md). One table per device: each layer's newest run, median "
-            "µs per operation and its ratio to libsecp256k1 in the same layer.\n\n")
+            "`results/`, or, while there are none, the full shared ones (results/SCHEMA.md). One table "
+            "per caller on each device, from its newest run: median µs per operation.\n\n")
     return head + (render(runs) if runs else "No runs yet.\n")
 
 
