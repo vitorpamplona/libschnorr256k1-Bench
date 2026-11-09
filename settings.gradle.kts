@@ -10,6 +10,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // libschnorr256k1-kmp 1.1.0 could not reach Maven Central (Sonatype's monthly size limit), so
+        // the bench takes JitPack's build of its main branch: gradle/libs.versions.toml.
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.vitorpamplona.libschnorr256k1-kmp") }
+        }
     }
 }
 

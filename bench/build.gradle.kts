@@ -139,7 +139,9 @@ kotlin {
             }
         }
 
-        // libschnorr256k1-kmp, on the targets it publishes (JVM, Android, Apple; not Linux Native).
+        // libschnorr256k1-kmp, from JitPack (settings.gradle.kts) until Maven Central takes releases
+        // again: JitPack builds on Linux, so only the JVM and Android layers have it. macOS gets
+        // it back, with cMain, from the first Maven Central release after 1.0.5.
         val cMain =
             create("cMain") {
                 dependsOn(commonMain.get())
@@ -173,7 +175,6 @@ kotlin {
         getByName("linuxX64Main").dependsOn(nativeMain)
         getByName("macosArm64Main") {
             dependsOn(nativeMain)
-            dependsOn(cMain)
         }
 
         val nativeTest =

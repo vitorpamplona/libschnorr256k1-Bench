@@ -27,7 +27,8 @@ their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
   SHA-256 and the derivation), one `backend_*.c` per library, `CMakeLists.txt` (both libraries
   from `third_party/` with their own build flags).
 - `bench/`: the Kotlin layers. `Impl.kt` (the interface), `Impls.kt` (ACINQ, Kotlin), `cMain/CImpl.kt`
-  (libschnorr256k1-kmp, on JVM, Android and Apple only: 1.0.5 has no linuxX64 artifact),
+  (libschnorr256k1-kmp, on JVM and Android: its 1.1.0 code comes from JitPack, which has no Apple
+  targets, until Maven Central takes a release again; Apple's comes back then),
   `Vectors.kt` (the twin of `vectors.c`), `Runner.kt` (the twin of `main.c`), `Main.kt`, and a
   `Platform` actual per target. `:bench:generateVectors` turns `vectors/v1.txt` into Kotlin.
   `commonTest/CrossCheckTest` runs the checks without the timing.
