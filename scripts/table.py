@@ -258,7 +258,7 @@ def headline(runs):
                     "noisier than a dedicated run's, which will replace them)")
     parts = [f"Measured on {device} ({first['cpu']}), {machine}, single thread, {when}. "
              "Each table ranks one operation by its median µs per call. A wrong result is listed "
-             "last, unranked; KI-n marks a known issue (below).\n"]
+             "last, unranked; KI-n marks a known issue ([results/SCHEMA.md](results/SCHEMA.md#known-issues)).\n"]
     for op, title, what in README_OPS:
         table = op_table(op, layers)
         if table:
