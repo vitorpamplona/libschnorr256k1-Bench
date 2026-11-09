@@ -204,7 +204,9 @@ README_OPS = [
     ("tweak.add", "Tweak-add a secret key", "(secret + tweak) mod n"),
     ("seckey.verify", "Check a secret key", "0 < key < n"),
 ]
-HIGHLIGHT = "kotlin"  # the library this bench was built for, in bold
+# Our libraries, in bold: libschnorr256k1-kotlin, and libschnorr256k1 (C) from every caller,
+# directly or through libschnorr256k1-kmp.
+HIGHLIGHT = {"kotlin", "libschnorr256k1"}
 REPORT = os.path.join(ROOT, "results", "report.md")
 
 
@@ -243,7 +245,7 @@ def op_table(op, layers):
         if ref is not None and lib != REFERENCE and ref["median_ns"] > 0:
             ratio = f"{row['median_ns'] / ref['median_ns']:.2f}x"
         cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us, ratio]
-        if lib == HIGHLIGHT:
+        if lib in HIGHLIGHT:
             cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
         out.append("| " + " | ".join(cells) + " |")
     return "\n".join(out) if ranked or wrong else None

@@ -47,16 +47,16 @@ binding as the reference beside it:
 
 ## Results
 
-One table per operation, verification first: a Nostr client verifies every event every relay
-sends. Each table ranks every library from every caller, with libschnorr256k1-kotlin, the
-library this bench was built for, in bold. **Caller** is the runtime the app's code runs on;
-**via** is how it reaches the library: directly, through a binding package (named, with its
-version), or by being written in the caller's own language ("pure"). Runs from a dedicated machine are what the tables are for;
-until there is one, a full run on a shared cloud VM stands in, labelled as such, and the first
-dedicated run replaces it. The newest device's runs are here, and every device's in
-[results/report.md](results/report.md). The runs are the JSON
-files in `results/<layer>/`; `scripts/table.py --readme` writes this section and the report from
-them, and CI fails when either is stale.
+One table per operation, verification first: a Nostr client verifies every event every relay sends.
+Each table ranks every library from every caller. Ours are in bold: libschnorr256k1-kotlin, and
+libschnorr256k1 (C), called directly or through libschnorr256k1-kmp. **Caller** is the runtime the
+app's code runs on; **via** is how it reaches the library: directly, through a binding package
+(named, with its version), or by being written in the caller's own language ("pure"). Runs from a
+dedicated machine are what the tables are for; until there is one, a full run on a shared cloud VM
+stands in, labelled as such, and the first dedicated run replaces it. The newest device's runs are
+here, and every device's in [results/report.md](results/report.md). The runs are the JSON files in
+`results/<layer>/`; `scripts/table.py --readme` writes this section and the report from them, and CI
+fails when either is stale.
 
 <!-- results:begin: scripts/table.py --readme writes this section; do not edit it by hand -->
 
@@ -75,9 +75,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 31.5 | – |
 | 6 | Go | `libsecp256k1` | cgo (the bench's own binding) | 32.6 | – |
 | 7 | Go | `splitsecure` | pure Go | 37.8 | 1.16x |
-| 8 | C | `libschnorr256k1` | direct | 43.7 | 1.45x |
+| **8** | **C** | **`libschnorr256k1`** | **direct** | **43.7** | **1.45x** |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **44.0** | **1.40x** |
-| 10 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 44.6 | 1.46x |
+| **10** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **44.6** | **1.46x** |
 | 11 | Rust | `k256` | pure Rust | 51.9 | 1.70x |
 | 12 | Rust | `secp256kfun` | pure Rust | 65.3 | 2.14x |
 | **13** | **JVM** | **`kotlin`** | **pure Kotlin** | **66.0** | **2.17x** |
@@ -113,8 +113,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 7 | Go | `splitsecure` | pure Go | 38.3 | 1.23x |
 | 8 | Rust | `k256` | pure Rust | 52.0 | 1.75x |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **52.3** | **1.70x** |
-| 10 | C | `libschnorr256k1` | direct | 53.2 | 1.78x |
-| 11 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 55.3 | 1.83x |
+| **10** | **C** | **`libschnorr256k1`** | **direct** | **53.2** | **1.78x** |
+| **11** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **55.3** | **1.83x** |
 | 12 | Rust | `secp256kfun` | pure Rust | 65.1 | 2.19x |
 | 13 | Go | `secp256k1-voi` | pure Go | 73.0 | 2.34x |
 | **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **77.6** | **2.56x** |
@@ -141,8 +141,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
 | **1** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **25.7** | **0.91x** |
-| 2 | C | `libschnorr256k1` | direct | 27.5 | 0.96x |
-| 3 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 27.8 | 1.00x |
+| **2** | **C** | **`libschnorr256k1`** | **direct** | **27.5** | **0.96x** |
+| **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **27.8** | **1.00x** |
 | 4 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 27.9 | – |
 | 5 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 28.1 | – |
 | 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 28.2 | – |
@@ -176,8 +176,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | C | `libschnorr256k1` | direct | 15.9 KI-1 | – |
-| 2 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 17.6 KI-1 | – |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **15.9 KI-1** | – |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **17.6 KI-1** | – |
 | **3** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **28.1** | – |
 | **4** | **JVM** | **`kotlin`** | **pure Kotlin** | **42.2** | – |
 | 5 | Go | `p256k1` | pure Go | 125.5 | – |
@@ -189,8 +189,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | C | `libschnorr256k1` | direct | 3.63 KI-1 | – |
-| 2 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 3.77 KI-1 | – |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **3.63 KI-1** | – |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **3.77 KI-1** | – |
 | **3** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **16.6** | – |
 | **4** | **JVM** | **`kotlin`** | **pure Kotlin** | **25.7** | – |
 | 5 | Go | `p256k1` | pure Go | 124.5 | – |
@@ -209,8 +209,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 5 | Go | `libsecp256k1` | cgo (the bench's own binding) | 31.6 | – |
 | 6 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 31.6 | – |
 | 7 | Go | `splitsecure` | pure Go | 38.6 | 1.22x |
-| 8 | C | `libschnorr256k1` | direct | 39.5 | 1.31x |
-| 9 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 39.8 | 1.33x |
+| **8** | **C** | **`libschnorr256k1`** | **direct** | **39.5** | **1.31x** |
+| **9** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **39.8** | **1.33x** |
 | **10** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **41.8** | **1.35x** |
 | 11 | Rust | `k256` | pure Rust | 52.2 | 1.72x |
 | **12** | **JVM** | **`kotlin`** | **pure Kotlin** | **61.3** | **2.04x** |
@@ -238,9 +238,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | C | `libschnorr256k1` | direct | 24.3 | 0.81x |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **24.3** | **0.81x** |
 | **2** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **24.4** | **0.86x** |
-| 3 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 25.3 | 0.88x |
+| **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **25.3** | **0.88x** |
 | 4 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 28.1 | – |
 | 5 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 28.2 | – |
 | 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 28.3 | – |
@@ -278,9 +278,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 2 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 27.0 | – |
 | 3 | C | `libsecp256k1` | direct | 27.3 | – |
 | 4 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 27.4 | – |
-| 5 | C | `libschnorr256k1` | direct | 29.0 | 1.06x |
+| **5** | **C** | **`libschnorr256k1`** | **direct** | **29.0** | **1.06x** |
 | **6** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **29.3** | **1.07x** |
-| 7 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 30.5 | 1.13x |
+| **7** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **30.5** | **1.13x** |
 | 8 | Rust | `k256` | pure Rust | 38.7 | 0.56x |
 | 9 | Go | `splitsecure` | pure Go | 39.1 | 1.45x |
 | **10** | **JVM** | **`kotlin`** | **pure Kotlin** | **47.4** | **1.76x** |
@@ -337,8 +337,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 25 | Python | `secp256k1lab` | pure Python | 11479.6 | 134.04x |
 | 26 | JVM | `nostr-java` | pure Java | 22266.8 | 818.24x |
 | 27 | Python | `bip340-reference` | pure Python | 142976.3 | 1669.48x |
-| – | C | `libschnorr256k1` | direct | 14.7 **wrong** KI-2 | 0.55x |
-| – | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 16.0 **wrong** KI-2 | 0.59x |
+| – | **C** | **`libschnorr256k1`** | **direct** | **14.7 **wrong** KI-2** | **0.55x** |
+| – | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **16.0 **wrong** KI-2** | **0.59x** |
 
 ### Create a public key
 
@@ -351,8 +351,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 13.3 | – |
 | **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **13.7** | **1.03x** |
 | 5 | Go | `libsecp256k1` | cgo (the bench's own binding) | 13.7 | – |
-| 6 | C | `libschnorr256k1` | direct | 14.3 | 1.11x |
-| 7 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 15.0 | 1.14x |
+| **6** | **C** | **`libschnorr256k1`** | **direct** | **14.3** | **1.11x** |
+| **7** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **15.0** | **1.14x** |
 | 8 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 15.3 | – |
 | 9 | Rust | `k256` | pure Rust | 19.1 | 0.56x |
 | 10 | Go | `splitsecure` | pure Go | 19.1 | 1.39x |
@@ -391,8 +391,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 8 | Rust | `k256` | pure Rust | 44.2 | 1.70x |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **44.5** | **1.65x** |
 | 10 | Rust | `secp256kfun` | pure Rust | 46.3 | 1.78x |
-| 11 | C | `libschnorr256k1` | direct | 47.4 | 1.77x |
-| 12 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 47.9 | 1.72x |
+| **11** | **C** | **`libschnorr256k1`** | **direct** | **47.4** | **1.77x** |
+| **12** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **47.9** | **1.72x** |
 | 13 | Go | `secp256k1-voi` | pure Go | 63.7 | 2.25x |
 | **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **65.6** | **2.35x** |
 | 15 | Go | `btcec` | pure Go | 125.3 | 4.42x |
@@ -425,8 +425,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 8 | Rust | `k256` | pure Rust | 43.6 | 1.64x |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **44.5** | **1.61x** |
 | 10 | Rust | `secp256kfun` | pure Rust | 46.7 | 1.76x |
-| 11 | C | `libschnorr256k1` | direct | 46.9 | 1.75x |
-| 12 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 48.0 | 1.80x |
+| **11** | **C** | **`libschnorr256k1`** | **direct** | **46.9** | **1.75x** |
+| **12** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **48.0** | **1.80x** |
 | **13** | **JVM** | **`kotlin`** | **pure Kotlin** | **65.5** | **2.45x** |
 | 14 | Go | `secp256k1-voi` | pure Go | 67.1 | 2.40x |
 | 15 | Go | `btcec` | pure Go | 124.9 | 4.47x |
@@ -459,8 +459,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 8 | Rust | `k256` | pure Rust | 43.8 | 1.67x |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **44.7** | **1.61x** |
 | 10 | Rust | `secp256kfun` | pure Rust | 46.7 | 1.78x |
-| 11 | C | `libschnorr256k1` | direct | 48.0 | 1.79x |
-| 12 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 48.2 | 1.80x |
+| **11** | **C** | **`libschnorr256k1`** | **direct** | **48.0** | **1.79x** |
+| **12** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **48.2** | **1.80x** |
 | 13 | Go | `secp256k1-voi` | pure Go | 63.6 | 2.40x |
 | **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **67.5** | **2.52x** |
 | 15 | JVM | `bouncycastle` | pure Java | 100.0 | 3.72x |
@@ -482,10 +482,10 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | C | `libschnorr256k1` | direct | 0.00 | 0.02x |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **0.00** | **0.02x** |
 | 2 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.01 | – |
 | 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.04 | – |
-| 4 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 0.07 | 5.08x |
+| **4** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **0.07** | **5.08x** |
 | 5 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 0.09 | – |
 | 6 | Go | `splitsecure` | pure Go | 0.10 | 0.60x |
 | 7 | C | `libsecp256k1` | direct | 0.10 | – |
@@ -516,7 +516,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | C | `libschnorr256k1` | direct | 0.02 | 0.96x |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **0.02** | **0.96x** |
 | 2 | C | `libsecp256k1` | direct | 0.02 | – |
 | 3 | Go | `p256k1` | pure Go | 0.03 | 0.56x |
 | 4 | Go | `splitsecure` | pure Go | 0.03 | 0.59x |
@@ -527,7 +527,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 9 | Go | `libsecp256k1` | cgo (the bench's own binding) | 0.05 | – |
 | 10 | Go | `btcec` | pure Go | 0.05 | 1.01x |
 | **11** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.07** | **0.39x** |
-| 12 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 0.11 | 0.96x |
+| **12** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **0.11** | **0.96x** |
 | 13 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.11 | – |
 | 14 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.12 | – |
 | 15 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.13 | – |
@@ -548,7 +548,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
 | 1 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.00 | – |
-| 2 | C | `libschnorr256k1` | direct | 0.01 | 0.82x |
+| **2** | **C** | **`libschnorr256k1`** | **direct** | **0.01** | **0.82x** |
 | 3 | Go | `p256k1` | pure Go | 0.01 | 0.18x |
 | 4 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 0.01 | – |
 | 5 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.01 | – |
@@ -561,7 +561,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 12 | Rust | `k256` | pure Rust | 0.02 | 2.56x |
 | 13 | JVM | `bouncycastle` | pure Java | 0.03 | 0.73x |
 | 14 | Go | `libsecp256k1` | cgo (the bench's own binding) | 0.03 | – |
-| 15 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 0.04 | 0.98x |
+| **15** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.0.5** | **0.04** | **0.98x** |
 | 16 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.04 | – |
 | 17 | JVM | `bitcoin-s` | pure Scala | 0.04 | 1.23x |
 | 18 | Go | `secp256k1-voi` | pure Go | 0.05 | 1.58x |
