@@ -49,14 +49,16 @@ binding as the reference beside it:
 
 One table per operation, verification first: a Nostr client verifies every event every relay
 sends. Each table ranks every library on every layer, with libschnorr256k1-kotlin, the library
-this bench was built for, in bold. Only runs from a dedicated machine are recorded: the newest
-device's here, and every device in [results/report.md](results/report.md). The runs are the JSON
+this bench was built for, in bold. Runs from a dedicated machine are what the tables are for;
+until there is one, a full run on a shared cloud VM stands in, labelled as such, and the first
+dedicated run replaces it. The newest device's runs are here, and every device's in
+[results/report.md](results/report.md). The runs are the JSON
 files in `results/<layer>/`; `scripts/table.py --readme` writes this section and the report from
 them, and CI fails when either is stale.
 
 <!-- results:begin: scripts/table.py --readme writes this section; do not edit it by hand -->
 
-No dedicated runs yet.
+No runs yet.
 
 <!-- results:end -->
 
@@ -99,7 +101,7 @@ scripts/table.py --readme
 - `run-android.sh` runs the android layer on the device adb sees.
 - `run-android-c.sh` builds `c/` with the NDK (`ANDROID_NDK_HOME`) and runs it on that device.
 - `table.py --readme` writes this README's Results and `results/report.md` from the dedicated
-  runs under `results/`. Commit the JSON files, the README and the report together. Without
+  runs under `results/`, or, while there are none, the full shared ones. Commit the JSON files, the README and the report together. Without
   `--readme`, `table.py` prints the tables of any results you give it, quick and shared runs
   included.
 - `--quick` makes any of them a smoke run, whose numbers are never comparable.
