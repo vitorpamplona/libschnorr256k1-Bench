@@ -25,7 +25,7 @@ binding as the reference beside it:
 | `jvm` | JVM 21 | [Bouncy Castle](https://www.bouncycastle.org/) `BIP340Signer`, [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s), [nostr-java](https://github.com/tcheeric/nostr-java) ([details](bench/README-jvm-libraries.md)) |
 | `rust` | Rust | [rust-secp256k1](https://github.com/rust-bitcoin/rust-secp256k1) (libsecp256k1), [k256](https://github.com/RustCrypto/elliptic-curves), [secp256kfun](https://github.com/LLFourn/secp256kfun) ([details](rust/README.md)) |
 | `go` | Go | libsecp256k1 (cgo), [btcec](https://github.com/btcsuite/btcd), p256k1 (ORLY's), [secp256k1-voi](https://gitlab.com/yawning/secp256k1-voi), [splitsecure](https://github.com/splitsecure/secp256k1-go) ([details](go/README.md)) |
-| `node`, `bun` | Node.js, Bun | [tiny-secp256k1](https://github.com/bitcoinjs/tiny-secp256k1) (libsecp256k1 as WebAssembly), [@noble/curves](https://github.com/paulmillr/noble-curves), [@noble/secp256k1](https://github.com/paulmillr/noble-secp256k1) ([details](js/README.md)) |
+| `node`, `bun` | Node.js, Bun | [tiny-secp256k1](https://github.com/bitcoinjs/tiny-secp256k1) (libsecp256k1 as wasm), [@noble/curves](https://github.com/paulmillr/noble-curves), [@noble/secp256k1](https://github.com/paulmillr/noble-secp256k1) ([details](js/README.md)) |
 | `python` | CPython | [coincurve](https://github.com/ofek/coincurve) (libsecp256k1), [btclib](https://github.com/btclib-org/btclib) (`ecc`), [embit](https://github.com/diybitcoinhardware/embit), [secp256k1lab](https://github.com/secp256k1lab/secp256k1lab), BIP-340's [reference.py](https://github.com/bitcoin/bips/blob/master/bip-0340/reference.py) ([details](python/README.md)) |
 
 ## How it measures
@@ -85,8 +85,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 95.6 | 2.93x |
 | 16 | JVM | `bouncycastle` | pure Java | 124.1 | 4.07x |
 | 17 | Go | `btcec` | pure Go | 158.4 | 4.86x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 177.7 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 195.0 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 177.7 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 195.0 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 367.9 | 2.07x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 660.9 | 3.72x |
 | 22 | Python | `btclib-ecc` | pure Python | 916.9 | 30.11x |
@@ -121,8 +121,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 95.9 | 3.08x |
 | 16 | JVM | `bouncycastle` | pure Java | 119.9 | 3.96x |
 | 17 | Go | `btcec` | pure Go | 158.9 | 5.10x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 178.6 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 183.7 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 178.6 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 183.7 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 353.1 | 1.98x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 666.4 | 3.73x |
 | 22 | Python | `btclib-ecc` | pure Python | 880.5 | 28.46x |
@@ -157,8 +157,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 84.5 | 2.68x |
 | 16 | JVM | `bouncycastle` | pure Java | 110.7 | 3.97x |
 | 17 | Go | `btcec` | pure Go | 158.3 | 5.02x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 174.4 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 176.5 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 174.4 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 176.5 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 336.8 | 1.93x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 670.7 | 3.85x |
 | 22 | Python | `btclib-ecc` | pure Python | 859.1 | 30.11x |
@@ -219,8 +219,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 94.6 | 3.00x |
 | 16 | JVM | `bouncycastle` | pure Java | 120.0 | 4.00x |
 | 17 | Go | `btcec` | pure Go | 158.5 | 5.02x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 180.1 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 184.5 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 180.1 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 184.5 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 372.4 | 2.07x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 660.8 | 3.67x |
 | 22 | Python | `btclib-ecc` | pure Python | 892.0 | 28.23x |
@@ -255,8 +255,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 84.0 | 2.73x |
 | 16 | JVM | `bouncycastle` | pure Java | 109.4 | 3.80x |
 | 17 | Go | `btcec` | pure Go | 154.5 | 5.02x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 174.2 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 176.3 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 174.2 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 176.3 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 344.2 | 1.98x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 657.0 | 3.77x |
 | 22 | Python | `btclib-ecc` | pure Python | 848.7 | 30.24x |
@@ -291,8 +291,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 86.6 | – |
 | 16 | Go | `p256k1` | pure Go | 105.1 | 3.90x |
 | 17 | JVM | `bouncycastle` | pure Java | 123.4 | 4.57x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 166.0 | – |
-| 19 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 170.9 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 166.0 | – |
+| 19 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 170.9 | – |
 | 20 | Bun | `noble-curves` | pure JavaScript | 612.3 | 3.69x |
 | 21 | Bun | `noble-secp256k1` | pure JavaScript | 904.7 | 5.45x |
 | 22 | Python | `btclib-ecc` | pure Python | 1283.9 | 14.83x |
@@ -325,8 +325,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 13 | Rust | `secp256kfun` | pure Rust | 82.1 | 1.18x |
 | 14 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 85.6 | – |
 | 15 | Go | `p256k1` | pure Go | 103.3 | 3.48x |
-| 16 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 163.3 | – |
-| 17 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 171.2 | – |
+| 16 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 163.3 | – |
+| 17 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 171.2 | – |
 | 18 | Bun | `noble-curves` | pure JavaScript | 615.7 | 3.77x |
 | 19 | Bun | `noble-secp256k1` | pure JavaScript | 817.9 | 5.01x |
 | 20 | Python | `btclib-ecc` | pure Python | 1315.5 | 15.36x |
@@ -363,9 +363,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 15 | Go | `p256k1` | pure Go | 40.7 | 2.97x |
 | 16 | Rust | `secp256kfun` | pure Rust | 41.4 | 1.22x |
 | 17 | JVM | `bouncycastle` | pure Java | 60.3 | 4.57x |
-| 18 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 79.4 | – |
+| 18 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 79.4 | – |
 | 19 | Bun | `noble-secp256k1` | pure JavaScript | 84.7 | 1.07x |
-| 20 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 85.3 | – |
+| 20 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 85.3 | – |
 | 21 | Bun | `noble-curves` | pure JavaScript | 109.0 | 1.37x |
 | 22 | Python | `btclib-ecc` | pure Python | 184.7 | 12.09x |
 | 23 | Node.js | `noble-secp256k1` | pure JavaScript | 196.9 | 2.31x |
@@ -397,8 +397,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **65.6** | **2.35x** |
 | 15 | Go | `btcec` | pure Go | 125.3 | 4.42x |
 | 16 | Go | `p256k1` | pure Go | 148.1 | 5.22x |
-| 17 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 158.0 | – |
-| 18 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 162.3 | – |
+| 17 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 158.0 | – |
+| 18 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 162.3 | – |
 | 19 | JVM | `bouncycastle` | pure Java | 187.5 | 6.72x |
 | 20 | JVM | `bitcoin-s` | pure Scala | 543.0 | 19.48x |
 | 21 | Bun | `noble-curves` | pure JavaScript | 543.2 | 3.44x |
@@ -431,8 +431,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 14 | Go | `secp256k1-voi` | pure Go | 67.1 | 2.40x |
 | 15 | Go | `btcec` | pure Go | 124.9 | 4.47x |
 | 16 | Go | `p256k1` | pure Go | 144.4 | 5.17x |
-| 17 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 156.1 | – |
-| 18 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 161.5 | – |
+| 17 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 156.1 | – |
+| 18 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 161.5 | – |
 | 19 | JVM | `bouncycastle` | pure Java | 181.0 | 6.78x |
 | 20 | JVM | `bitcoin-s` | pure Scala | 494.8 | 18.53x |
 | 21 | Bun | `noble-curves` | pure JavaScript | 574.9 | 3.68x |
@@ -465,8 +465,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **67.5** | **2.52x** |
 | 15 | JVM | `bouncycastle` | pure Java | 100.0 | 3.72x |
 | 16 | Go | `btcec` | pure Go | 121.4 | 4.57x |
-| 17 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 156.0 | – |
-| 18 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 163.3 | – |
+| 17 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 156.0 | – |
+| 18 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 163.3 | – |
 | 19 | Go | `p256k1` | pure Go | 171.4 | 6.45x |
 | 20 | JVM | `bitcoin-s` | pure Scala | 506.9 | 18.88x |
 | 21 | Bun | `noble-curves` | pure JavaScript | 545.8 | 3.50x |
@@ -495,8 +495,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | 11 | Go | `btcec` | pure Go | 0.24 | 1.53x |
 | **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.25** | **5.76x** |
 | 13 | Go | `p256k1` | pure Go | 0.27 | 1.70x |
-| 14 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.37 | – |
-| 15 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.42 | – |
+| 14 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.37 | – |
+| 15 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.42 | – |
 | 16 | JVM | `bouncycastle` | pure Java | 0.51 | 37.04x |
 | 17 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 1.21 | – |
 | 18 | Bun | `noble-curves` | pure JavaScript | 1.55 | 4.15x |
@@ -529,8 +529,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 | **11** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.07** | **0.39x** |
 | 12 | JVM | `libschnorr256k1` | JNI: schnorr256k1-kmp 1.0.5 | 0.11 | 0.96x |
 | 13 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.11 | – |
-| 14 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.12 | – |
-| 15 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.13 | – |
+| 14 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.12 | – |
+| 15 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.13 | – |
 | 16 | Go | `secp256k1-voi` | pure Go | 0.13 | 2.67x |
 | 17 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.19 | – |
 | 18 | Bun | `noble-curves` | pure JavaScript | 0.66 | 5.33x |
@@ -547,11 +547,11 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.30GHz), **a shared
 
 | # | caller | library | via | µs | vs libsecp256k1 |
 |---:|---|---|---|---:|---:|
-| 1 | Bun | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.00 | – |
+| 1 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.00 | – |
 | 2 | C | `libschnorr256k1` | direct | 0.01 | 0.82x |
 | 3 | Go | `p256k1` | pure Go | 0.01 | 0.18x |
 | 4 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 0.01 | – |
-| 5 | Node.js | `libsecp256k1` | WebAssembly: tiny-secp256k1 2.2.5 | 0.01 | – |
+| 5 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.01 | – |
 | 6 | C | `libsecp256k1` | direct | 0.01 | – |
 | **7** | **JVM** | **`kotlin`** | **pure Kotlin** | **0.01** | **0.23x** |
 | 8 | Go | `splitsecure` | pure Go | 0.01 | 0.27x |

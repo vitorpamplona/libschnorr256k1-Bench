@@ -121,7 +121,7 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 #### Node.js
 
-| op | libsecp256k1 (WebAssembly: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
+| op | libsecp256k1 (wasm: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
 |---|---:|---:|---:|
 | verify.sameKey | 176.5 | 1127.4 (6.39x) | 1884.8 (10.68x) |
 | verify.manyKeys | 183.7 | 1136.1 (6.18x) | 1884.8 (10.26x) |
@@ -142,7 +142,7 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 #### Bun
 
-| op | libsecp256k1 (WebAssembly: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
+| op | libsecp256k1 (wasm: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
 |---|---:|---:|---:|
 | verify.sameKey | 174.4 | 336.8 (1.93x) | 670.7 (3.85x) |
 | verify.manyKeys | 178.6 | 353.1 (1.98x) | 666.4 (3.73x) |
