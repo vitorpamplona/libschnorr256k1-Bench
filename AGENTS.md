@@ -36,7 +36,7 @@ their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
 - `rust/`, `go/`, `js/`, `python/`: the other languages' layers, each with `run.sh` (build and
   run) and a README (libraries, licenses, the call per operation).
 - `scripts/`: `run-host.sh` (c, jvm, native, and rust, go, node, bun, python), `run-android.sh`,
-  `run-android-c.sh` (NDK + adb), `table.py` (results to Markdown tables; `--check` for CI; `--readme` writes the dedicated runs
+  `run-android-c.sh` (NDK + adb), `table.py` (results to Markdown tables; `--check` for CI; `--readme` writes the published runs
   into README.md's Results, and `--readme --check` fails CI when that section is stale).
 - `third_party/`: submodules. `libschnorr256k1-kotlin` (substituted for the Maven artifact in
   `settings.gradle.kts`), `secp256k1` (at the commit ACINQ 0.24.0 bundles), `libschnorr256k1`.
@@ -56,8 +56,10 @@ their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
   It fails the tests and `table.py --check` unless an observed known issue explains it
   (`Runner.COVERS`, `COVERS` in `table.py`: keep them equal). A new bug gets a KI-n entry in
   SCHEMA.md and a probe in both runners; a fixed one keeps its entry, and its probe reports `false`.
-- **Only numbers from a dedicated machine are published** (`--machine dedicated`: nothing else
-  running, on AC power or charged and cool). CI and cloud VMs are `shared`. CI times nothing: it
+- **Numbers from a dedicated machine are what gets published** (`--machine dedicated`: nothing
+  else running, on AC power or charged and cool). While there are none, a full (not `--quick`)
+  `shared` run stands in, and the README says it is one; a dedicated run replaces it. Quick runs
+  are never published. CI and cloud VMs are `shared`. CI times nothing: it
   runs each layer's checks (`bench check`, `CrossCheckTest`, `<layer>/run.sh --check`,
   `run-android*.sh --check`), and a quick run is a local smoke test.
 - Allocation and cycle counts are not in the schema (not reliable on Android); they belong in the
@@ -71,7 +73,7 @@ git submodule update --init --recursive
 scripts/run-host.sh --device "ThinkPad X1 Gen 11" --machine dedicated
 scripts/run-android.sh --machine dedicated            # a device on adb
 scripts/run-android-c.sh --machine dedicated          # needs the NDK
-scripts/table.py --readme                             # the dedicated runs into README.md
+scripts/table.py --readme                             # the published runs into README.md
 ```
 
 `--quick` on any script is a smoke run; `--check` runs a layer's checks without timing. The

@@ -5,7 +5,7 @@
     scripts/table.py results/jvm/X.json results/c/Y.json
     scripts/table.py --quick DIR         # include --quick runs (smoke runs; not comparable)
     scripts/table.py --check --quick DIR # also exit 1 on a wrong row no known issue explains (CI)
-    scripts/table.py --readme            # README.md's ranked tables and results/report.md from the dedicated runs
+    scripts/table.py --readme            # README.md's ranked tables and results/report.md from the full runs
     scripts/table.py --readme --check    # exit 1 if either is not what --readme would write (CI)
 
 Each device gets one table per layer: a row per operation, a column per library, with the median in
@@ -13,8 +13,8 @@ microseconds and, beside it, the ratio to libsecp256k1 in the same layer. A wron
 "wrong" and the known issue that explains it; an operation a library lacks shows "-". Files whose
 schema, vectors or vectors file hash are not this checkout's are skipped with a warning.
 
---readme uses only full runs from a dedicated machine under results/ (never --quick or shared runs,
-results/SCHEMA.md). It writes one ranked table per operation (README_OPS, verification first) for the device of the
+--readme uses the full runs from a dedicated machine under results/, or, while there are none,
+the full shared ones, labelled as such (never --quick runs). It writes one ranked table per operation (README_OPS, verification first) for the device of the
 newest run between README_BEGIN and README_END in README.md, and every table to results/report.md.
 """
 
@@ -178,8 +178,12 @@ HIGHLIGHT = "kotlin"  # the library this bench was built for, in bold
 REPORT = os.path.join(ROOT, "results", "report.md")
 
 
-def dedicated_runs():
-    return [r for r in collect([], quick=False) if r["context"]["machine"] == "dedicated" and not r.get("quick")]
+def published_runs():
+    """The full runs under results/ the README shows: the dedicated ones, or, while there are none,
+    the shared ones (a cloud VM), which the README then labels as such. Never a --quick run."""
+    full = [r for r in collect([], quick=False) if not r.get("quick")]
+    dedicated = [r for r in full if r["context"]["machine"] == "dedicated"]
+    return dedicated or full
 
 
 def latest_by_layer(runs):
@@ -216,13 +220,16 @@ def op_table(op, layers):
 
 
 def headline(runs):
-    """A ranked table per operation for the device of the newest dedicated run."""
+    """A ranked table per operation for the device of the newest published run."""
     device = max(runs, key=lambda r: r["context"]["date"])["context"]["device"]
     layers = latest_by_layer([r for r in runs if r["context"]["device"] == device])
     first = layers[0]["context"]
     dates = sorted({r["context"]["date"] for r in layers})
     when = dates[0] if len(dates) == 1 else f"{dates[0]} to {dates[-1]}"
-    parts = [f"Measured on {device} ({first['cpu']}), a dedicated machine, single thread, {when}. "
+    machine = ("a dedicated machine" if all(r["context"]["machine"] == "dedicated" for r in layers)
+               else "**a shared machine** (a cloud VM: other work may have run beside it, so the numbers are "
+                    "noisier than a dedicated run's, which will replace them)")
+    parts = [f"Measured on {device} ({first['cpu']}), {machine}, single thread, {when}. "
              "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 in the "
              "same layer (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
              "known issue (below).\n"]
@@ -242,7 +249,7 @@ def headline(runs):
 def readme_section(runs):
     """What README.md holds between the markers: the headline table, or a note that there is none."""
     if not runs:
-        body = "No dedicated runs yet.\n"
+        body = "No runs yet.\n"
     else:
         body = headline(runs) + ("\nEvery operation, layer and device: [results/report.md](results/report.md).\n")
     return f"{README_BEGIN}\n\n{body.rstrip()}\n\n{README_END}"
@@ -250,9 +257,9 @@ def readme_section(runs):
 
 def report_text(runs):
     head = ("# Results\n\nWritten by `scripts/table.py --readme` from the dedicated runs under "
-            "`results/` (results/SCHEMA.md). One table per device: each layer's newest run, median "
+            "`results/`, or, while there are none, the full shared ones (results/SCHEMA.md). One table per device: each layer's newest run, median "
             "µs per operation and its ratio to libsecp256k1 in the same layer.\n\n")
-    return head + (render(runs) if runs else "No dedicated runs yet.\n")
+    return head + (render(runs) if runs else "No runs yet.\n")
 
 
 def readme(check):
@@ -262,7 +269,7 @@ def readme(check):
     begin, end = text.find(README_BEGIN), text.find(README_END)
     if begin < 0 or end < begin:
         sys.exit(f"README.md has no {README_BEGIN} ... {README_END} section")
-    runs = dedicated_runs()
+    runs = published_runs()
     updated = text[:begin] + readme_section(runs) + text[end + len(README_END):]
     report = report_text(runs)
     old_report = open(REPORT).read() if os.path.exists(REPORT) else None
@@ -286,7 +293,7 @@ def main():
     check = "--check" in args
     if "--readme" in args:
         if quick or len(args) > (2 if check else 1):
-            sys.exit("--readme takes only --check: it renders the dedicated runs under results/")
+            sys.exit("--readme takes only --check: it renders the full runs under results/")
         readme(check)
         return
     args = [a for a in args if a not in ("--quick", "--check")]
