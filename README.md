@@ -596,9 +596,13 @@ Every run probes for these and records what it saw (`known_issues_observed`):
 
 | ID | Library | Issue |
 |---|---|---|
-| KI-1 | libschnorr256k1, kotlin | Batch verify has no random coefficients: two invalid signatures that cancel are accepted. |
-| KI-2 | libschnorr256k1 | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. |
-| KI-3 | libschnorr256k1 | A tweak-mul on the odd-y form of a key poisons the x-keyed table that verify uses: valid signatures are rejected. |
+| KI-1 | libschnorr256k1 (fixed in [libschnorr256k1#9](https://github.com/vitorpamplona/libschnorr256k1/pull/9); still in libschnorr256k1-kmp 1.0.5), kotlin (fixed) | Batch verify has no random coefficients: two invalid signatures that cancel are accepted. |
+| KI-2 | libschnorr256k1 (fixed in [libschnorr256k1#10](https://github.com/vitorpamplona/libschnorr256k1/pull/10); still in libschnorr256k1-kmp 1.0.5) | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. |
+| KI-3 | libschnorr256k1 (fixed in [libschnorr256k1#8](https://github.com/vitorpamplona/libschnorr256k1/pull/8); still in libschnorr256k1-kmp 1.0.5) | A tweak-mul on the odd-y form of a key poisons the x-keyed table that verify uses: valid signatures are rejected. |
+
+A fixed issue keeps its entry and its probe, which then reports it not observed. The jvm, native
+and android layers reach libschnorr256k1 through libschnorr256k1-kmp 1.0.5, which predates the
+fixes, so their libschnorr256k1 rows still show them until it has a new release.
 
 ## Run
 
