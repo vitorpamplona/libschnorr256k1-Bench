@@ -58,7 +58,9 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
 
 ## Layers and libraries
 
-`library` names the implementation, `binding` how the layer reaches it: for a binding, the
+`library` names the implementation, `binding` how the layer reaches it (the tables show the
+layer as the **caller**, by its runtime's name, and the binding as **via**: "direct", "pure
+<language>", or the mechanism and the binding package from `context.libraries`): for a binding, the
 binding package or mechanism; for a pure implementation, its language. Every binding to
 bitcoin-core's libsecp256k1 is `libsecp256k1`, one per layer, so each layer's ratios are against
 the reference as that ecosystem calls it. Each layer's README gives every library's exact call

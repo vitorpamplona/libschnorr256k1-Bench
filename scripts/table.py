@@ -47,6 +47,36 @@ def libraries(run):
     return [l for l in LIBRARIES if l in present] + sorted(l for l in present if l not in LIBRARIES)
 
 
+# How the tables name a result's layer and binding (the JSON keeps "layer" and "binding",
+# results/SCHEMA.md). The caller is the runtime the app's code runs on; "via" is how it reaches
+# the library: directly, through a binding package (named with its version), or by being written
+# in the caller's own language.
+CALLERS = {"c": "C", "rust": "Rust", "go": "Go", "native": "Kotlin/Native", "jvm": "JVM",
+           "android": "Android", "node": "Node.js", "bun": "Bun", "python": "Python"}
+PURE = {"kotlin": "Kotlin", "java": "Java", "scala": "Scala", "rust": "Rust", "go": "Go",
+        "js": "JavaScript", "python": "Python"}
+MECHANISMS = {"jni": "JNI", "cinterop": "cinterop", "wasm": "WebAssembly", "cffi": "CFFI",
+              "rust-secp256k1": "FFI", "cgo": "cgo"}
+
+
+def caller(layer):
+    return CALLERS.get(layer, layer)
+
+
+def via(run, library, binding):
+    """'direct', 'pure <language>', or '<mechanism>: <binding package and version>'."""
+    if binding == "c":
+        return "direct"
+    if binding in PURE:
+        return f"pure {PURE[binding]}"
+    mechanism = MECHANISMS.get(binding, binding)
+    if binding == "cgo":  # the go layer's own cgo binding: no package
+        return "cgo (the bench's own binding)"
+    package = run["context"]["libraries"].get(library, "")
+    package = package.split(" (")[0]  # drop the parenthetical detail; the versions list keeps it
+    return f"{mechanism}: {package}" if package else mechanism
+
+
 def layer_order(layer):
     return LAYERS.index(layer) if layer in LAYERS else len(LAYERS)
 REFERENCE = "libsecp256k1"
@@ -118,13 +148,13 @@ def render(runs):
         quick = any(r.get("quick") for r in layers)
         out.append(f"### {device}{' (quick, not comparable)' if quick else ''}\n")
         out.append(f"{first['cpu']}; machine: {', '.join(sorted({r['context']['machine'] for r in layers}))}. "
-                   "Median µs per operation (ratio to libsecp256k1 in the same layer).\n")
+                   "Median µs per operation (ratio to libsecp256k1 from the same caller).\n")
         for r in layers:
             libs = libraries(r)
             rows = {(row["op"], row["library"]): row for row in r["rows"]}
-            binding = {row["library"]: row["binding"] for row in r["rows"]}
+            binding = {row["library"]: via(r, row["library"], row["binding"]) for row in r["rows"]}
             c = r["context"]
-            out.append(f"#### {r['layer']}\n")
+            out.append(f"#### {caller(r['layer'])}\n")
             out.append("| op | " + " | ".join(f"{lib} ({binding[lib]})" for lib in libs) + " |")
             out.append("|---|" + "---:|" * len(libs))
             for op in OPS:
@@ -203,7 +233,7 @@ def op_table(op, layers):
             if row is not None:
                 (ranked if row["correct"] else wrong).append((r, lib, row, by.get((op, REFERENCE))))
     ranked.sort(key=lambda x: x[2]["median_ns"])
-    out = ["| # | layer | library | binding | µs | vs libsecp256k1 |", "|---:|---|---|---|---:|---:|"]
+    out = ["| # | caller | library | via | µs | vs libsecp256k1 |", "|---:|---|---|---|---:|---:|"]
     for i, (r, lib, row, ref) in enumerate(ranked + wrong, 1):
         rank = str(i) if row["correct"] else "–"
         us = fmt_us(row["median_ns"]) + ("" if row["correct"] else " **wrong**")
@@ -212,7 +242,7 @@ def op_table(op, layers):
         ratio = "–"
         if ref is not None and lib != REFERENCE and ref["median_ns"] > 0:
             ratio = f"{row['median_ns'] / ref['median_ns']:.2f}x"
-        cells = [rank, r["layer"], f"`{lib}`", row["binding"], us, ratio]
+        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us, ratio]
         if lib == HIGHLIGHT:
             cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
         out.append("| " + " | ".join(cells) + " |")
@@ -230,8 +260,8 @@ def headline(runs):
                else "**a shared machine** (a cloud VM: other work may have run beside it, so the numbers are "
                     "noisier than a dedicated run's, which will replace them)")
     parts = [f"Measured on {device} ({first['cpu']}), {machine}, single thread, {when}. "
-             "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 in the "
-             "same layer (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
+             "Each table ranks one operation: median µs per call, and its ratio to libsecp256k1 from the "
+             "same caller (below 1x is faster). A wrong result is listed last, unranked; KI-n marks a "
              "known issue (below).\n"]
     for op, title, what in README_OPS:
         table = op_table(op, layers)
@@ -241,7 +271,7 @@ def headline(runs):
     for r in layers:
         c = r["context"]
         libs = ", ".join(f"{k} {v}" for k, v in c["libraries"].items())
-        notes.append(f"- {r['layer']}: {c['os']}, {c['runtime']}; {libs}")
+        notes.append(f"- {caller(r['layer'])}: {c['os']}, {c['runtime']}; {libs}")
     parts.append("### Versions\n\n" + "\n".join(notes) + "\n")
     return "\n".join(parts)
 

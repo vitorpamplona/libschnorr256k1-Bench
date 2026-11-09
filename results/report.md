@@ -4,11 +4,11 @@ Written by `scripts/table.py --readme` from the dedicated runs under `results/`,
 
 ### Cloud VM (4 vCPU)
 
-Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation (ratio to libsecp256k1 in the same layer).
+Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation (ratio to libsecp256k1 from the same caller).
 
-#### c
+#### C
 
-| op | libsecp256k1 (c) | libschnorr256k1 (c) |
+| op | libsecp256k1 (direct) | libschnorr256k1 (direct) |
 |---|---:|---:|
 | verify.sameKey | 28.6 | 27.5 (0.96x) |
 | verify.manyKeys | 29.9 | 53.2 (1.78x) |
@@ -29,9 +29,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux, C, 13.3.0, each library with its own CMake flags, x86_64, Release; libsecp256k1 6e2c8bc, libschnorr256k1 2a8798e; harness 01e496d
 
-#### rust
+#### Rust
 
-| op | libsecp256k1 (rust-secp256k1) | k256 (rust) | secp256kfun (rust) |
+| op | libsecp256k1 (FFI: secp256k1 0.33.1) | k256 (pure Rust) | secp256kfun (pure Rust) |
 |---|---:|---:|---:|
 | verify.sameKey | 28.1 | 49.3 (1.75x) | 65.3 (2.32x) |
 | verify.manyKeys | 29.8 | 52.0 (1.75x) | 65.1 (2.19x) |
@@ -50,9 +50,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux, Rust, rustc 1.97.0 (2d8144b78 2026-07-07), x86_64, release profile, opt-level 3; libsecp256k1 secp256k1 0.33.1 (secp256k1-sys 0.14.1, libsecp256k1 6e2c8bc), k256 k256 0.14.0, secp256kfun secp256kfun 0.12.1 + schnorr_fun 0.13.0; harness 01e496d
 
-#### go
+#### Go
 
-| op | libsecp256k1 (cgo) | btcec (go) | p256k1 (go) | secp256k1-voi (go) | splitsecure (go) |
+| op | libsecp256k1 (cgo (the bench's own binding)) | btcec (pure Go) | p256k1 (pure Go) | secp256k1-voi (pure Go) | splitsecure (pure Go) |
 |---|---:|---:|---:|---:|---:|
 | verify.sameKey | 31.6 | 158.3 (5.02x) | 84.5 (2.68x) | 70.6 (2.24x) | 35.3 (1.12x) |
 | verify.manyKeys | 31.1 | 158.9 (5.10x) | 95.9 (3.08x) | 73.0 (2.34x) | 38.3 (1.23x) |
@@ -73,9 +73,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux 6.18.44-fc-v310, Go go1.26.10 (gc, linux/amd64), cgo: gcc 13.3.0 -O2; libsecp256k1 bitcoin-core/secp256k1 6e2c8bc, btcec github.com/btcsuite/btcd/btcec/v2 v2.5.1, p256k1 p256k1.mleku.dev v1.1.7 (git.mleku.dev/mleku/p256k1), secp256k1-voi gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b, splitsecure github.com/splitsecure/secp256k1-go v0.1.0; harness 01e496d
 
-#### native
+#### Kotlin/Native
 
-| op | libsecp256k1 (cinterop) | kotlin (kotlin) |
+| op | libsecp256k1 (cinterop: secp256k1-kmp 0.24.0) | kotlin (pure Kotlin) |
 |---|---:|---:|
 | verify.sameKey | 28.2 | 25.7 (0.91x) |
 | verify.manyKeys | 30.7 | 52.3 (1.70x) |
@@ -96,9 +96,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux 6.18.44-fc-v310, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1; harness 01e496d
 
-#### jvm
+#### JVM
 
-| op | libsecp256k1 (jni) | libschnorr256k1 (jni) | kotlin (kotlin) | bitcoin-s (scala) | bouncycastle (java) | nostr-java (java) |
+| op | libsecp256k1 (JNI: secp256k1-kmp 0.24.0) | libschnorr256k1 (JNI: schnorr256k1-kmp 1.0.5) | kotlin (pure Kotlin) | bitcoin-s (pure Scala) | bouncycastle (pure Java) | nostr-java (pure Java) |
 |---|---:|---:|---:|---:|---:|---:|
 | verify.sameKey | 27.9 | 27.8 (1.00x) | 45.6 (1.63x) | 1036.4 (37.19x) | 110.7 (3.97x) | 10791.6 (387.23x) |
 | verify.manyKeys | 30.3 | 55.3 (1.83x) | 77.6 (2.56x) | 1048.7 (34.64x) | 119.9 (3.96x) | 11041.7 (364.68x) |
@@ -119,9 +119,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux 6.18.44-fc-v310, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.0.5, kotlin schnorr256k1-kotlin v1.0.1, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2; harness 01e496d
 
-#### node
+#### Node.js
 
-| op | libsecp256k1 (wasm) | noble-curves (js) | noble-secp256k1 (js) |
+| op | libsecp256k1 (WebAssembly: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
 |---|---:|---:|---:|
 | verify.sameKey | 176.5 | 1127.4 (6.39x) | 1884.8 (10.68x) |
 | verify.manyKeys | 183.7 | 1136.1 (6.18x) | 1884.8 (10.26x) |
@@ -140,9 +140,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux 6.18.44-fc-v310, Node.js v22.23.4 (V8 12.4.254.21-node.57); libsecp256k1 tiny-secp256k1 2.2.5, noble-curves @noble/curves 2.4.0, noble-secp256k1 @noble/secp256k1 3.2.0; harness 01e496d
 
-#### bun
+#### Bun
 
-| op | libsecp256k1 (wasm) | noble-curves (js) | noble-secp256k1 (js) |
+| op | libsecp256k1 (WebAssembly: tiny-secp256k1 2.2.5) | noble-curves (pure JavaScript) | noble-secp256k1 (pure JavaScript) |
 |---|---:|---:|---:|
 | verify.sameKey | 174.4 | 336.8 (1.93x) | 670.7 (3.85x) |
 | verify.manyKeys | 178.6 | 353.1 (1.98x) | 666.4 (3.73x) |
@@ -161,9 +161,9 @@ Intel(R) Xeon(R) Processor @ 2.30GHz; machine: shared. Median µs per operation 
 
 2026-11-09, Linux 6.18.44-fc-v310, Bun 1.4.4 (JavaScriptCore d6375c72affe0f70222cdcb45012b10f0bf3a9d5); libsecp256k1 tiny-secp256k1 2.2.5, noble-curves @noble/curves 2.4.0, noble-secp256k1 @noble/secp256k1 3.2.0; harness 01e496d
 
-#### python
+#### Python
 
-| op | libsecp256k1 (cffi) | bip340-reference (python) | btclib-ecc (python) | embit (python) | secp256k1lab (python) |
+| op | libsecp256k1 (CFFI: coincurve 21.0.0) | bip340-reference (pure Python) | btclib-ecc (pure Python) | embit (pure Python) | secp256k1lab (pure Python) |
 |---|---:|---:|---:|---:|---:|
 | verify.sameKey | 28.5 | 70871.0 (2483.87x) | 859.1 (30.11x) | 1903.4 (66.71x) | 7767.2 (272.22x) |
 | verify.manyKeys | 30.9 | 72176.0 (2332.88x) | 880.5 (28.46x) | 1971.5 (63.72x) | 7760.6 (250.84x) |
