@@ -15,10 +15,11 @@ permissions:
   contents: read
 
 jobs:
-  # c, jvm and native (linuxX64) on Linux.
+  # c, jvm and native (linuxX64) on Linux. The jvm layer's nostr-java (about 11 ms a verify) makes
+  # :bench:jvmTest about half an hour and the jvm smoke run about twenty minutes more.
   linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
         with:
