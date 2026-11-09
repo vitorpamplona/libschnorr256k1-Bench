@@ -22,11 +22,13 @@ static int sign(uint8_t sig[64], const uint8_t msg[32], const uint8_t seckey[32]
     return secp256k1c_schnorr_sign(sig, msg, 32, seckey, aux);
 }
 
-/* KI-2: invalid for keys whose public key has odd y. */
+/* The 33-byte key gives the y parity, so nothing is derived. (sign_xonly, which this used before,
+ * signed with the wrong secret for odd-y keys: KI-2, fixed in libschnorr256k1#10, which added this
+ * call; it now derives d*G for the parity, so it is no faster than sign.) */
 static int sign_known_pub(uint8_t sig[64], const uint8_t msg[32], const uint8_t seckey[32],
                           const uint8_t pub33[33], const uint8_t xonly[32], const uint8_t aux[32]) {
-    (void)pub33;
-    return secp256k1c_schnorr_sign_xonly(sig, msg, 32, seckey, xonly, aux);
+    (void)xonly;
+    return secp256k1c_schnorr_sign_with_pubkey(sig, msg, 32, seckey, pub33, aux);
 }
 
 static int verify(const uint8_t sig[64], const uint8_t msg[32], const uint8_t xonly[32]) {

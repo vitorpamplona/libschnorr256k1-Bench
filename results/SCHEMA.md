@@ -124,7 +124,7 @@ The calls below are the first three libraries'; the others' are in their layers'
 | `verifyFast.sameKey` | entry 0 | full verify (no fast variant) | `schnorr_verify_fast` | `schnorrVerifyFast` |
 | `verifyBatch200.perSig` | `batchSig[0..199]`, key 0 | n/a | `schnorr_verify_batch` | `schnorrVerifyBatch` |
 | `sign` | cycling | `keypair_create` + `schnorrsig_sign32` | `schnorr_sign` | `schnorrSign` |
-| `sign.knownPub` | cycling | same as `sign` (always derives the key pair) | `schnorr_sign_xonly` (KI-2) | `schnorrSignWithPubKey` (33-byte key) |
+| `sign.knownPub` | cycling | same as `sign` (always derives the key pair) | c: `schnorr_sign_with_pubkey` (33-byte key); through libschnorr256k1-kmp 1.0.5, which lacks it: `schnorrSignXOnly` (KI-2) | `schnorrSignWithPubKey` (33-byte key) |
 | `pubkey.create` | cycling | `ec_pubkey_create` + serialize (65) | `pubkey_create` | `pubkeyCreate` |
 | `pubkey.compress` | cycling | `ec_pubkey_parse` (65) + serialize (33) | `pubkey_compress` | `pubkeyCompress` |
 | `seckey.verify` | cycling | `ec_seckey_verify` | `seckey_verify` | `seckeyVerify` |
@@ -150,6 +150,6 @@ would: ACINQ's `Secp256k1` methods, libschnorr256k1-kmp's `Schnorr256k1` methods
 
 | ID | Library | Issue |
 |---|---|---|
-| KI-1 | libschnorr256k1, kotlin (fixed in libschnorr256k1-kotlin `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
-| KI-2 | libschnorr256k1 | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. Its `sign.knownPub` row is `correct: false`. |
-| KI-3 | libschnorr256k1 | `ecmult` shares an x-keyed table cache with verify: after a tweak-mul on the odd-y form of a key, verify rejects valid signatures for its x-only form, and after a verify the odd-y tweak-mul is negated. No row is affected: `tweak.mul` runs on points no verification uses (`tpub33`). |
+| KI-1 | libschnorr256k1 (fixed in libschnorr256k1#9; still in libschnorr256k1-kmp 1.0.5), kotlin (fixed in libschnorr256k1-kotlin `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
+| KI-2 | libschnorr256k1 (fixed in libschnorr256k1#10; still in libschnorr256k1-kmp 1.0.5) | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. Its `sign.knownPub` row is `correct: false`. |
+| KI-3 | libschnorr256k1 (fixed in libschnorr256k1#8; still in libschnorr256k1-kmp 1.0.5) | `ecmult` shares an x-keyed table cache with verify: after a tweak-mul on the odd-y form of a key, verify rejects valid signatures for its x-only form, and after a verify the odd-y tweak-mul is negated. No row is affected: `tweak.mul` runs on points no verification uses (`tpub33`). |
