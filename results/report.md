@@ -75,26 +75,26 @@ Intel(R) Xeon(R) Processor @ 2.10GHz; machine: shared. Median µs per operation.
 
 #### Kotlin/Native
 
-| op | libsecp256k1 (cinterop: secp256k1-kmp 0.24.0) | kotlin (pure Kotlin) |
-|---|---:|---:|
-| verify.sameKey | 33.5 | 34.8 |
-| verify.manyKeys | 37.0 | 47.1 |
-| verifyFast.sameKey | 33.2 | 32.9 |
-| verifyBatch200.perSig | - | 14.0 |
-| sign | 32.5 | 25.7 |
-| sign.knownPub | 30.0 | 14.1 |
-| pubkey.create | 15.7 | 11.6 |
-| pubkey.compress | 0.04 | 0.29 |
-| seckey.verify | 0.08 | 0.03 |
-| ecdh.xOnly | 32.0 | 39.7 |
-| tweak.mul | 28.7 | 40.1 |
-| tweak.add | 0.19 | 0.09 |
-| nostr.verify | 32.9 | 37.5 |
-| nostr.verifyFast | 35.4 | 35.7 |
-| nostr.verifyBatchByAuthor | - | 24.6 |
-| nostr.ecdh | 32.4 | 39.7 |
+| op | libsecp256k1 (cinterop: secp256k1-kmp 0.24.0) | libschnorr256k1 (cinterop: schnorr256k1-kmp 1.1.0) | kotlin (pure Kotlin) |
+|---|---:|---:|---:|
+| verify.sameKey | 34.0 | 26.4 | 46.6 |
+| verify.manyKeys | 37.3 | 40.3 | 54.6 |
+| verifyFast.sameKey | 35.7 | 26.4 | 32.2 |
+| verifyBatch200.perSig | - | 11.2 | 15.8 |
+| sign | 33.1 | 20.5 | 25.5 |
+| sign.knownPub | 33.6 | 10.8 | 13.9 |
+| pubkey.create | 16.7 | 10.4 | 10.9 |
+| pubkey.compress | 0.06 | 0.17 | 0.38 |
+| seckey.verify | 0.10 | 0.05 | 0.03 |
+| ecdh.xOnly | 29.3 | 33.1 | 39.2 |
+| tweak.mul | 32.2 | 32.6 | 40.1 |
+| tweak.add | 0.25 | 0.17 | 0.10 |
+| nostr.verify | 37.5 | 30.6 | 41.0 |
+| nostr.verifyFast | 36.0 | 28.9 | 29.5 |
+| nostr.verifyBatchByAuthor | - | 17.6 | 28.0 |
+| nostr.ecdh | 37.0 | 34.4 | 40.2 |
 
-2026-11-10, Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13; harness be96320
+2026-11-10, Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13; harness d054407-dirty
 
 #### JVM
 

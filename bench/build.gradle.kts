@@ -140,8 +140,9 @@ kotlin {
         }
 
         // libschnorr256k1-kmp, from JitPack (settings.gradle.kts) until Maven Central takes releases
-        // again: JitPack builds on Linux, so only the JVM and Android layers have it. macOS gets
-        // it back, with cMain, from the first Maven Central release after 1.0.5.
+        // again. JitPack builds on Linux, so the JVM, Android and linuxX64 layers have it (JNI on
+        // the first two, cinterop on linuxX64); macOS gets it back, with cMain, from the first
+        // Maven Central release after 1.0.5.
         val cMain =
             create("cMain") {
                 dependsOn(commonMain.get())
@@ -172,7 +173,17 @@ kotlin {
             create("nativeMain") {
                 dependsOn(commonMain.get())
             }
-        getByName("linuxX64Main").dependsOn(nativeMain)
+        getByName("linuxX64Main") {
+            dependsOn(nativeMain)
+            dependsOn(cMain)
+            dependencies {
+                // JitPack's rewrite of the module metadata drops the classifier from the cinterop
+                // klib, so both linuxX64 files are named after the Kotlin klib and the cinterop one
+                // (secp256k1c_init and the rest of the C API) never downloads. Ask for it by name.
+                val kmp = libs.schnorr256k1.kmp.get()
+                implementation("${kmp.group}:${kmp.name}-linuxx64:${kmp.version}:cinterop-schnorr256k1@klib")
+            }
+        }
         getByName("macosArm64Main") {
             dependsOn(nativeMain)
         }
