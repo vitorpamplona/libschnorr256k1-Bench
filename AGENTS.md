@@ -8,7 +8,7 @@ start:
 |---|---|---|
 | `libsecp256k1` | bitcoin-core's libsecp256k1 (the reference) | C; ACINQ's secp256k1-kmp (JNI, cinterop) |
 | `libschnorr256k1` | libschnorr256k1 (C) | C; libschnorr256k1-kmp (JNI, cinterop on Apple) |
-| `kotlin` | libschnorr256k1-kotlin (pure Kotlin), built from the submodule | none |
+| `libschnorr256k1-kotlin` | libschnorr256k1-kotlin (pure Kotlin), built from the submodule | none |
 
 Every other maintained BIP-340 implementation runs beside them, for comparison: more JVM
 libraries in `bench/` (`bench/README-jvm-libraries.md`), and one layer per language, `rust/`,

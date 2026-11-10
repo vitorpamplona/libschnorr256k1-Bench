@@ -4,7 +4,8 @@ Frozen. Renaming an operation, changing what it measures or how a statistic is c
 adding a column, is schema v4. Results with different schema versions, vector digests or
 datasets are never put in the same table.
 
-v4 (2026-11-10) adds BIP-340's own test vectors (`vectors/bip340/test-vectors.csv`, the rows with a
+v4 (2026-11-10) renames the pure-Kotlin library from `kotlin` to `libschnorr256k1-kotlin` (a
+`library` names an implementation; its language is the `binding`), and adds BIP-340's own test vectors (`vectors/bip340/test-vectors.csv`, the rows with a
 32-byte message) to what `correct` checks, with two batch rejections (`vectors/README.md`,
 "BIP-340 vectors"), the `bip340Sha256` field, and KI-4. The operations, inputs, columns and
 statistics are v3's; a v3 result passed fewer checks, so none is compared with a v4 one.
@@ -40,12 +41,12 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
     "runtime": "e.g. OpenJDK 64-Bit Server VM 21.0.12 / ART 2.1.0 / Kotlin/Native 2.4.21 / C, 13.3.0, ...",
     "machine": "dedicated | shared",
     "harness": "<libschnorr256k1-bench commit>[-dirty]",
-    "libraries": { "libsecp256k1": "6e2c8bc | secp256k1-kmp 0.24.0", "libschnorr256k1": "2a8798e | schnorr256k1-kmp 1.0.5", "kotlin": "schnorr256k1-kotlin 0a37aee" }
+    "libraries": { "libsecp256k1": "6e2c8bc | secp256k1-kmp 0.24.0", "libschnorr256k1": "2a8798e | schnorr256k1-kmp 1.0.5", "libschnorr256k1-kotlin": "schnorr256k1-kotlin 0a37aee" }
   },
   "rows": [
     {
       "op": "verify.sameKey",
-      "library": "libsecp256k1 | libschnorr256k1 | kotlin | k256 | btcec | noble-curves | ...",
+      "library": "libsecp256k1 | libschnorr256k1 | libschnorr256k1-kotlin | k256 | btcec | noble-curves | ...",
       "binding": "c | jni | cinterop | kotlin | wasm | cgo | rust-secp256k1 | cffi | java | rust | go | js | python | ...",
       "median_ns": 38400,
       "p5_ns": 37100,
@@ -75,8 +76,8 @@ for every operation, and what it lacks.
 | Layer | Runner | Libraries (`library` / `binding`) |
 |---|---|---|
 | `c` | `c/main.c` | libsecp256k1 / c, libschnorr256k1 / c |
-| `jvm` | `bench/` (`Runner.kt`) | libsecp256k1 / jni (ACINQ), libschnorr256k1 / jni, kotlin / kotlin, bouncycastle / java, bitcoin-s / scala, nostr-java / java ([bench/README-jvm-libraries.md](../bench/README-jvm-libraries.md)) |
-| `native` | `bench/` | libsecp256k1 / cinterop, libschnorr256k1 / cinterop (linuxX64; on Apple too once libschnorr256k1-kmp is back on Maven Central), kotlin / kotlin |
+| `jvm` | `bench/` (`Runner.kt`) | libsecp256k1 / jni (ACINQ), libschnorr256k1 / jni, libschnorr256k1-kotlin / kotlin, bouncycastle / java, bitcoin-s / scala, nostr-java / java ([bench/README-jvm-libraries.md](../bench/README-jvm-libraries.md)) |
+| `native` | `bench/` | libsecp256k1 / cinterop, libschnorr256k1 / cinterop (linuxX64; on Apple too once libschnorr256k1-kmp is back on Maven Central), libschnorr256k1-kotlin / kotlin |
 | `android` | `bench-android/` | as `jvm`'s first three |
 | `rust` | `rust/` ([README](../rust/README.md)) | libsecp256k1 / rust-secp256k1, k256 / rust, secp256kfun / rust |
 | `go` | `go/` ([README](../go/README.md)) | libsecp256k1 / cgo, btcec / go, p256k1 / go, secp256k1-voi / go, splitsecure / go |
@@ -157,7 +158,7 @@ would: ACINQ's `Secp256k1` methods, libschnorr256k1-kmp's `Schnorr256k1` methods
 
 | ID | Library | Issue |
 |---|---|---|
-| KI-1 | libschnorr256k1 (fixed in libschnorr256k1#9 and libschnorr256k1-kmp 1.1.0), kotlin (fixed in libschnorr256k1-kotlin `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
+| KI-1 | libschnorr256k1 (fixed in libschnorr256k1#9 and libschnorr256k1-kmp 1.1.0), libschnorr256k1-kotlin (fixed in `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
 | KI-2 | libschnorr256k1 (fixed in libschnorr256k1#10 and libschnorr256k1-kmp 1.1.0) | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. Its `sign.knownPub` row is `correct: false`. |
 | KI-3 | libschnorr256k1 (fixed in libschnorr256k1#8 and libschnorr256k1-kmp 1.1.0) | `ecmult` shares an x-keyed table cache with verify: after a tweak-mul on the odd-y form of a key, verify rejects valid signatures for its x-only form, and after a verify the odd-y tweak-mul is negated. No row is affected: `tweak.mul` runs on points no verification uses (`tpub33`). |
-| KI-4 | libschnorr256k1 (`schnorr_verify_fast`), kotlin (`schnorrVerifyFast`) | The fast verify skips BIP-340's check that R has even y, by design (both libraries document it): it accepts BIP-340's vector 6, and any signature whose R has odd y, which every BIP-340 verifier rejects. Only the key's owner can make one, so it forges nothing, but two clients can disagree on whether an event is valid. Its `verifyFast.sameKey` and `nostr.verifyFast` rows are `correct: false`, and their times are not comparable with a full verify's: they skip the work of that check. KI-4 explains a row only when the odd-y R is all that is wrong with it. |
+| KI-4 | libschnorr256k1 (`schnorr_verify_fast`), libschnorr256k1-kotlin (`schnorrVerifyFast`) | The fast verify skips BIP-340's check that R has even y, by design (both libraries document it): it accepts BIP-340's vector 6, and any signature whose R has odd y, which every BIP-340 verifier rejects. Only the key's owner can make one, so it forges nothing, but two clients can disagree on whether an event is valid. Its `verifyFast.sameKey` and `nostr.verifyFast` rows are `correct: false`, and their times are not comparable with a full verify's: they skip the work of that check. KI-4 explains a row only when the odd-y R is all that is wrong with it. |

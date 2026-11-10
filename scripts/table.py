@@ -34,7 +34,7 @@ OPS = [
 LAYERS = ["c", "rust", "go", "native", "jvm", "android", "node", "bun", "python"]
 # Column order: the reference, the two this bench started with, then every other library a run
 # reports, alphabetically (libraries()).
-LIBRARIES = ["libsecp256k1", "libschnorr256k1", "kotlin"]
+LIBRARIES = ["libsecp256k1", "libschnorr256k1", "libschnorr256k1-kotlin"]
 SCHEMA = 4
 
 
@@ -207,7 +207,7 @@ README_OPS = [
 ]
 # Our libraries, in bold: libschnorr256k1-kotlin, and libschnorr256k1 (C) from every caller,
 # directly or through libschnorr256k1-kmp.
-HIGHLIGHT = {"kotlin", "libschnorr256k1"}
+HIGHLIGHT = {"libschnorr256k1-kotlin", "libschnorr256k1"}
 REPORT = os.path.join(ROOT, "results", "report.md")
 
 
