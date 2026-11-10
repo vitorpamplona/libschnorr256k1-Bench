@@ -140,7 +140,7 @@ def render(runs):
         # The newest run per layer; c runs on a host and on Android share a device only by name.
         latest = {}
         for r in sorted(rs, key=lambda r: r["context"]["date"]):
-            latest[(r["layer"], r["context"]["os"])] = r
+            latest[(r["layer"], os_name(r))] = r
         layers = sorted(latest.values(), key=lambda r: layer_order(r["layer"]))
         first = layers[0]["context"]
         quick = any(r.get("quick") for r in layers)
@@ -216,10 +216,16 @@ def published_runs():
     return dedicated or full
 
 
+def os_name(run):
+    """The OS a run is on, without its version: "Linux 6.18.44-fc-v310" and "Linux 6.18.44-fc-v338"
+    are one platform (the same VM type on a newer kernel), so a newer run replaces the older."""
+    return run["context"]["os"].split()[0]
+
+
 def latest_by_layer(runs):
     latest = {}
     for r in sorted(runs, key=lambda r: r["context"]["date"]):
-        latest[(r["layer"], r["context"]["os"])] = r
+        latest[(r["layer"], os_name(r))] = r
     return sorted(latest.values(), key=lambda r: layer_order(r["layer"]))
 
 
