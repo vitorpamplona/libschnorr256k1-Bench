@@ -29,8 +29,7 @@ import platform.posix.fclose
 import platform.posix.fgets
 import platform.posix.fopen
 
-// No libschnorr256k1-kmp here: it publishes no linuxX64 artifact (c/ measures the C library on Linux).
-actual val platformImpls: List<Impl> = listOf(AcinqImpl("cinterop"), KotlinImpl)
+actual val platformImpls: List<Impl> = listOf(AcinqImpl("cinterop"), CImpl("cinterop"), KotlinImpl)
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nativeCpuName(): String? {

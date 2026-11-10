@@ -70,7 +70,7 @@ for every operation, and what it lacks.
 |---|---|---|
 | `c` | `c/main.c` | libsecp256k1 / c, libschnorr256k1 / c |
 | `jvm` | `bench/` (`Runner.kt`) | libsecp256k1 / jni (ACINQ), libschnorr256k1 / jni, kotlin / kotlin, bouncycastle / java, bitcoin-s / scala, nostr-java / java ([bench/README-jvm-libraries.md](../bench/README-jvm-libraries.md)) |
-| `native` | `bench/` | libsecp256k1 / cinterop, libschnorr256k1 / cinterop (Apple only, and not while libschnorr256k1-kmp comes from JitPack), kotlin / kotlin |
+| `native` | `bench/` | libsecp256k1 / cinterop, libschnorr256k1 / cinterop (linuxX64; on Apple too once libschnorr256k1-kmp is back on Maven Central), kotlin / kotlin |
 | `android` | `bench-android/` | as `jvm`'s first three |
 | `rust` | `rust/` ([README](../rust/README.md)) | libsecp256k1 / rust-secp256k1, k256 / rust, secp256kfun / rust |
 | `go` | `go/` ([README](../go/README.md)) | libsecp256k1 / cgo, btcec / go, p256k1 / go, secp256k1-voi / go, splitsecure / go |
