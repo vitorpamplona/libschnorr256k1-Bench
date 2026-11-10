@@ -31,7 +31,7 @@ class CImpl(
     override val binding: String,
 ) : Impl {
     override val library = "libschnorr256k1"
-    override val version = "schnorr256k1-kmp 1.1.0 (JitPack f19cabc)"
+    override val version = "schnorr256k1-kmp 1.1.0 + libschnorr256k1 0942a32 (JitPack 4478ec1)"
 
     init {
         CLib.ensureLoaded()

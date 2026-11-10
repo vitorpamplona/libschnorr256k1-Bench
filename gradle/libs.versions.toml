@@ -10,8 +10,9 @@ bouncycastle = "1.86"
 cryptoKmp = "2.1.0"
 kotlin = "2.4.21"
 nostrJava = "2.4.2"
-# JitPack builds of libschnorr256k1-kmp's main, by commit (settings.gradle.kts); 1.1.0 is that commit's code.
-schnorr256k1Kmp = "f19cabc890"
+# JitPack builds of libschnorr256k1-kmp's main, by commit (settings.gradle.kts): 1.1.0's bindings with
+# libschnorr256k1 0942a32 (faster compress and ECDH) since 4478ec1386.
+schnorr256k1Kmp = "4478ec1386"
 secp256k1Kmp = "0.24.0"
 spotless = "8.10.4"
 
