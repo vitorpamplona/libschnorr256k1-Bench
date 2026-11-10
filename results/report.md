@@ -100,24 +100,24 @@ Intel(R) Xeon(R) Processor @ 2.10GHz; machine: shared. Median µs per operation.
 
 | op | libsecp256k1 (cinterop: secp256k1-kmp 0.24.0) | kotlin (pure Kotlin) |
 |---|---:|---:|
-| verify.sameKey | 33.2 | 34.3 |
-| verify.manyKeys | 37.5 | 48.8 |
-| verifyFast.sameKey | 36.1 | 32.5 |
-| verifyBatch200.perSig | - | 14.1 |
-| sign | 33.1 | 27.7 |
-| sign.knownPub | 35.4 | 15.2 |
-| pubkey.create | 12.3 | 12.0 |
-| pubkey.compress | 0.05 | 0.29 |
-| seckey.verify | 0.08 | 0.02 |
-| ecdh.xOnly | 33.2 | 41.3 |
-| tweak.mul | 32.2 | 39.6 |
-| tweak.add | 0.21 | 0.08 |
-| nostr.verify | 37.7 | 41.4 |
-| nostr.verifyFast | 38.2 | 38.3 |
-| nostr.verifyBatchByAuthor | - | 24.8 |
-| nostr.ecdh | 33.1 | 36.9 |
+| verify.sameKey | 33.2 | 34.7 |
+| verify.manyKeys | 36.2 | 46.3 |
+| verifyFast.sameKey | 32.0 | 31.4 |
+| verifyBatch200.perSig | - | 13.9 |
+| sign | 32.5 | 25.1 |
+| sign.knownPub | 32.6 | 14.4 |
+| pubkey.create | 14.9 | 11.2 |
+| pubkey.compress | 0.04 | 0.26 |
+| seckey.verify | 0.08 | 0.03 |
+| ecdh.xOnly | 31.6 | 38.6 |
+| tweak.mul | 30.3 | 37.3 |
+| tweak.add | 0.19 | 0.08 |
+| nostr.verify | 35.8 | 36.0 |
+| nostr.verifyFast | 31.4 | 38.3 |
+| nostr.verifyBatchByAuthor | - | 25.1 |
+| nostr.ecdh | 25.2 | 40.1 |
 
-2026-11-10, Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-19-gc5b6cdf; harness fd49a3b
+2026-11-10, Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13; harness ab819f1
 
 #### JVM
 
@@ -146,24 +146,24 @@ Intel(R) Xeon(R) Processor @ 2.10GHz; machine: shared. Median µs per operation.
 
 | op | libsecp256k1 (JNI: secp256k1-kmp 0.24.0) | libschnorr256k1 (JNI: schnorr256k1-kmp 1.1.0) | kotlin (pure Kotlin) | bitcoin-s (pure Scala) | bouncycastle (pure Java) | nostr-java (pure Java) |
 |---|---:|---:|---:|---:|---:|---:|
-| verify.sameKey | 34.0 | 26.6 | 49.6 | 1195.3 | 128.4 | 12633.0 |
-| verify.manyKeys | 36.5 | 28.0 | 73.8 | 1214.0 | 142.1 | 13439.9 |
-| verifyFast.sameKey | 32.1 | 19.9 | 46.7 | 1197.2 | 126.4 | 12529.3 |
-| verifyBatch200.perSig | - | 10.3 | 22.8 | - | - | - |
-| sign | 33.2 | 21.0 | 45.5 | 6303.9 | 151.7 | 25856.0 |
-| sign.knownPub | 32.9 | 10.3 | 23.9 | 6630.5 | 89.8 | 25810.6 |
-| pubkey.create | 15.5 | 10.2 | 22.7 | 388.5 | 68.1 | - |
-| pubkey.compress | 0.02 | 0.15 | 0.15 | 17.6 | 0.51 | - |
+| verify.sameKey | 26.8 | 26.9 | 49.9 | 1140.9 | 126.8 | 12481.5 |
+| verify.manyKeys | 36.6 | 35.7 | 76.9 | 1204.3 | 144.7 | 12167.0 |
+| verifyFast.sameKey | 33.5 | 25.1 | 48.9 | 1202.3 | 123.1 | 12759.1 |
+| verifyBatch200.perSig | - | 10.3 | 24.0 | - | - | - |
+| sign | 33.4 | 19.5 | 48.3 | 7232.9 | 142.0 | 25901.1 |
+| sign.knownPub | 33.1 | 10.9 | 23.7 | 6996.3 | 86.5 | 25755.2 |
+| pubkey.create | 15.7 | 10.5 | 23.0 | 446.2 | 69.1 | - |
+| pubkey.compress | 0.02 | 0.14 | 0.15 | 17.2 | 0.44 | - |
 | seckey.verify | 0.04 | 0.04 | 0.01 | 0.05 | 0.03 | - |
-| ecdh.xOnly | 31.6 | 31.5 | 50.5 | 559.2 | 216.1 | - |
-| tweak.mul | 31.9 | 30.6 | 60.7 | 534.0 | 116.4 | - |
-| tweak.add | 0.13 | 0.13 | 0.04 | 2.48 | - | - |
-| nostr.verify | 36.1 | 30.6 | 62.8 | 1046.2 | 139.5 | 12989.6 |
-| nostr.verifyFast | 35.2 | 29.3 | 50.6 | 1196.6 | 136.8 | 13291.8 |
-| nostr.verifyBatchByAuthor | - | 16.7 | 38.8 | - | - | - |
-| nostr.ecdh | 30.7 | 31.4 | 64.9 | 569.2 | 205.6 | - |
+| ecdh.xOnly | 25.8 | 32.1 | 64.3 | 571.9 | 205.7 | - |
+| tweak.mul | 31.4 | 31.6 | 52.1 | 578.1 | 114.4 | - |
+| tweak.add | 0.13 | 0.10 | 0.04 | 2.42 | - | - |
+| nostr.verify | 28.0 | 30.4 | 55.5 | 1233.8 | 140.3 | 12589.3 |
+| nostr.verifyFast | 38.1 | 28.1 | 58.7 | 1186.7 | 144.1 | 12949.3 |
+| nostr.verifyBatchByAuthor | - | 17.3 | 37.8 | - | - | - |
+| nostr.ecdh | 32.4 | 31.3 | 66.4 | 590.9 | 217.0 | - |
 
-2026-11-10, Linux 6.18.44-fc-v338, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-19-gc5b6cdf, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2; harness fd49a3b
+2026-11-10, Linux 6.18.44-fc-v338, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2; harness ab819f1
 
 #### Node.js
 
