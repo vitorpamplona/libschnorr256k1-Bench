@@ -25,41 +25,41 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **30.6** |
-| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.0** |
-| **3** | **C** | **`libschnorr256k1`** | **direct** | **31.1** |
-| 4 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 36.1 |
-| 5 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 37.4 |
-| 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 37.7 |
-| 7 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 37.9 |
-| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 38.1 |
-| 9 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 38.1 |
-| 10 | Go | `libsecp256k1` | cgo (the bench's own binding) | 38.2 |
-| 11 | C | `libsecp256k1` | direct | 38.2 |
-| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **41.4** |
+| 1 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 28.0 |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **30.4** |
+| **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.0** |
+| **4** | **C** | **`libschnorr256k1`** | **direct** | **31.1** |
+| 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 35.8 |
+| **6** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **36.0** |
+| 7 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 37.4 |
+| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 37.9 |
+| 9 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 38.1 |
+| 10 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 38.1 |
+| 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 38.2 |
+| 12 | C | `libsecp256k1` | direct | 38.2 |
 | 13 | Go | `splitsecure` | pure Go | 46.2 |
 | **14** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **53.8** |
-| 15 | Rust | `k256` | pure Rust | 62.3 |
-| **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **62.8** |
+| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **55.5** |
+| 16 | Rust | `k256` | pure Rust | 62.3 |
 | **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **76.2** |
 | 18 | Rust | `secp256kfun` | pure Rust | 80.0 |
 | 19 | Go | `secp256k1-voi` | pure Go | 84.0 |
 | 20 | Go | `p256k1` | pure Go | 113.0 |
-| 21 | JVM | `bouncycastle` | pure Java | 139.5 |
+| 21 | JVM | `bouncycastle` | pure Java | 140.3 |
 | 22 | JVM | `bouncycastle` | pure Java | 144.3 |
 | 23 | Go | `btcec` | pure Go | 191.5 |
 | 24 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 219.0 |
 | 25 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 220.3 |
 | 26 | Bun | `noble-curves` | pure JavaScript | 507.6 |
 | 27 | Bun | `noble-secp256k1` | pure JavaScript | 972.2 |
-| 28 | JVM | `bitcoin-s` | pure Scala | 1046.2 |
-| 29 | Python | `btclib-ecc` | pure Python | 1055.3 |
+| 28 | Python | `btclib-ecc` | pure Python | 1055.3 |
+| 29 | JVM | `bitcoin-s` | pure Scala | 1233.8 |
 | 30 | JVM | `bitcoin-s` | pure Scala | 1265.3 |
 | 31 | Node.js | `noble-curves` | pure JavaScript | 1391.5 |
 | 32 | Node.js | `noble-secp256k1` | pure JavaScript | 2386.1 |
 | 33 | Python | `embit` | pure Python | 2406.1 |
 | 34 | Python | `secp256k1lab` | pure Python | 9146.8 |
-| 35 | JVM | `nostr-java` | pure Java | 12989.6 |
+| 35 | JVM | `nostr-java` | pure Java | 12589.3 |
 | 36 | JVM | `nostr-java` | pure Java | 13167.7 |
 | 37 | Python | `bip340-reference` | pure Python | 88496.2 |
 
@@ -69,42 +69,42 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **28.0** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **35.7** |
 | 2 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 36.0 |
 | **3** | **C** | **`libschnorr256k1`** | **direct** | **36.1** |
-| 4 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 36.5 |
-| 5 | C | `libsecp256k1` | direct | 36.8 |
-| 6 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 36.9 |
-| **7** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **37.1** |
-| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 37.5 |
+| 4 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 36.2 |
+| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 36.6 |
+| 6 | C | `libsecp256k1` | direct | 36.8 |
+| 7 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 36.9 |
+| **8** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **37.1** |
 | 9 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 37.6 |
 | 10 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 37.7 |
 | 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 39.9 |
 | 12 | Go | `splitsecure` | pure Go | 45.7 |
-| **13** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **48.8** |
+| **13** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **46.3** |
 | 14 | Rust | `k256` | pure Rust | 62.2 |
 | **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **65.0** |
-| **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **73.8** |
+| **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **76.9** |
 | 17 | Rust | `secp256kfun` | pure Rust | 79.3 |
 | 18 | Go | `secp256k1-voi` | pure Go | 85.0 |
 | **19** | **JVM** | **`kotlin`** | **pure Kotlin** | **92.9** |
 | 20 | Go | `p256k1` | pure Go | 113.0 |
-| 21 | JVM | `bouncycastle` | pure Java | 142.1 |
-| 22 | JVM | `bouncycastle` | pure Java | 143.9 |
+| 21 | JVM | `bouncycastle` | pure Java | 143.9 |
+| 22 | JVM | `bouncycastle` | pure Java | 144.7 |
 | 23 | Go | `btcec` | pure Go | 195.0 |
 | 24 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 217.0 |
 | 25 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 224.3 |
 | 26 | Bun | `noble-curves` | pure JavaScript | 483.1 |
 | 27 | Bun | `noble-secp256k1` | pure JavaScript | 1000.7 |
 | 28 | Python | `btclib-ecc` | pure Python | 1091.0 |
-| 29 | JVM | `bitcoin-s` | pure Scala | 1214.0 |
+| 29 | JVM | `bitcoin-s` | pure Scala | 1204.3 |
 | 30 | JVM | `bitcoin-s` | pure Scala | 1340.7 |
 | 31 | Node.js | `noble-curves` | pure JavaScript | 1375.6 |
 | 32 | Python | `embit` | pure Python | 2411.1 |
 | 33 | Node.js | `noble-secp256k1` | pure JavaScript | 2452.0 |
 | 34 | Python | `secp256k1lab` | pure Python | 9285.3 |
-| 35 | JVM | `nostr-java` | pure Java | 13235.4 |
-| 36 | JVM | `nostr-java` | pure Java | 13439.9 |
+| 35 | JVM | `nostr-java` | pure Java | 12167.0 |
+| 36 | JVM | `nostr-java` | pure Java | 13235.4 |
 | 37 | Python | `bip340-reference` | pure Python | 90700.2 |
 
 ### Verify, one key
@@ -115,25 +115,25 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 |---:|---|---|---|---:|
 | **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **25.7** |
 | **2** | **C** | **`libschnorr256k1`** | **direct** | **26.1** |
-| **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **26.6** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **31.1** |
-| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.1 |
-| 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.2 |
-| 7 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 34.0 |
-| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 34.0 |
-| **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **34.3** |
-| 10 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 34.4 |
+| 3 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 26.8 |
+| **4** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **26.9** |
+| **5** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **31.1** |
+| 6 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.1 |
+| 7 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.2 |
+| 8 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 34.0 |
+| 9 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 34.4 |
+| **10** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **34.7** |
 | 11 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 35.9 |
 | 12 | Go | `libsecp256k1` | cgo (the bench's own binding) | 35.9 |
 | 13 | C | `libsecp256k1` | direct | 36.2 |
 | 14 | Go | `splitsecure` | pure Go | 42.2 |
-| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **49.6** |
+| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **49.9** |
 | **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **51.1** |
 | 17 | Rust | `k256` | pure Rust | 58.9 |
 | 18 | Rust | `secp256kfun` | pure Rust | 79.6 |
 | 19 | Go | `secp256k1-voi` | pure Go | 83.4 |
 | 20 | Go | `p256k1` | pure Go | 102.1 |
-| 21 | JVM | `bouncycastle` | pure Java | 128.4 |
+| 21 | JVM | `bouncycastle` | pure Java | 126.8 |
 | 22 | JVM | `bouncycastle` | pure Java | 130.6 |
 | 23 | Go | `btcec` | pure Go | 189.3 |
 | 24 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 198.2 |
@@ -141,13 +141,13 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 26 | Bun | `noble-curves` | pure JavaScript | 449.5 |
 | 27 | Bun | `noble-secp256k1` | pure JavaScript | 954.5 |
 | 28 | Python | `btclib-ecc` | pure Python | 1069.0 |
-| 29 | JVM | `bitcoin-s` | pure Scala | 1195.3 |
+| 29 | JVM | `bitcoin-s` | pure Scala | 1140.9 |
 | 30 | JVM | `bitcoin-s` | pure Scala | 1273.1 |
 | 31 | Node.js | `noble-curves` | pure JavaScript | 1308.9 |
 | 32 | Python | `embit` | pure Python | 2378.2 |
 | 33 | Node.js | `noble-secp256k1` | pure JavaScript | 2437.3 |
 | 34 | Python | `secp256k1lab` | pure Python | 9130.6 |
-| 35 | JVM | `nostr-java` | pure Java | 12633.0 |
+| 35 | JVM | `nostr-java` | pure Java | 12481.5 |
 | 36 | JVM | `nostr-java` | pure Java | 13102.1 |
 | 37 | Python | `bip340-reference` | pure Python | 86412.6 |
 
@@ -157,12 +157,12 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **16.7** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **17.3** |
 | **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **17.8** |
 | **3** | **C** | **`libschnorr256k1`** | **direct** | **18.9** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **24.8** |
+| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **25.1** |
 | **5** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **34.2** |
-| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **38.8** |
+| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **37.8** |
 | **7** | **JVM** | **`kotlin`** | **pure Kotlin** | **50.7** |
 | 8 | Go | `p256k1` | pure Go | 153.9 |
 | 9 | Python | `btclib-ecc` | pure Python | 1001.4 |
@@ -176,9 +176,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.3** |
 | **2** | **C** | **`libschnorr256k1`** | **direct** | **10.8** |
 | **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.9** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **14.1** |
+| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **13.9** |
 | **5** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **21.0** |
-| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **22.8** |
+| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **24.0** |
 | **7** | **JVM** | **`kotlin`** | **pure Kotlin** | **30.8** |
 | 8 | Go | `p256k1` | pure Go | 146.1 |
 | 9 | Python | `btclib-ecc` | pure Python | 817.5 |
@@ -189,27 +189,27 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **29.3** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **28.1** |
 | **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **29.4** |
 | **3** | **C** | **`libschnorr256k1`** | **direct** | **30.6** |
-| 4 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 35.2 |
+| 4 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 31.4 |
 | 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 36.6 |
 | 6 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 37.0 |
 | 7 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 37.2 |
 | 8 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 38.0 |
-| 9 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 38.2 |
+| 9 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 38.1 |
 | **10** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **38.3** |
 | 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 38.4 |
 | 12 | C | `libsecp256k1` | direct | 38.8 |
 | 13 | Go | `splitsecure` | pure Go | 46.0 |
-| **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **50.6** |
-| **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **52.0** |
+| **14** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **52.0** |
+| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **58.7** |
 | 16 | Rust | `k256` | pure Rust | 59.4 |
 | **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **74.0** |
 | 18 | Rust | `secp256kfun` | pure Rust | 77.7 |
 | 19 | Go | `secp256k1-voi` | pure Go | 85.4 |
 | 20 | Go | `p256k1` | pure Go | 115.3 |
-| 21 | JVM | `bouncycastle` | pure Java | 136.8 |
+| 21 | JVM | `bouncycastle` | pure Java | 144.1 |
 | 22 | JVM | `bouncycastle` | pure Java | 144.3 |
 | 23 | Go | `btcec` | pure Go | 193.6 |
 | 24 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 219.5 |
@@ -217,13 +217,13 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 26 | Bun | `noble-curves` | pure JavaScript | 484.4 |
 | 27 | Bun | `noble-secp256k1` | pure JavaScript | 996.3 |
 | 28 | Python | `btclib-ecc` | pure Python | 1062.9 |
-| 29 | JVM | `bitcoin-s` | pure Scala | 1196.6 |
+| 29 | JVM | `bitcoin-s` | pure Scala | 1186.7 |
 | 30 | JVM | `bitcoin-s` | pure Scala | 1253.1 |
 | 31 | Node.js | `noble-curves` | pure JavaScript | 1354.2 |
 | 32 | Node.js | `noble-secp256k1` | pure JavaScript | 2357.4 |
 | 33 | Python | `embit` | pure Python | 2439.6 |
 | 34 | Python | `secp256k1lab` | pure Python | 9545.3 |
-| 35 | JVM | `nostr-java` | pure Java | 13291.8 |
+| 35 | JVM | `nostr-java` | pure Java | 12949.3 |
 | 36 | JVM | `nostr-java` | pure Java | 13296.0 |
 | 37 | Python | `bip340-reference` | pure Python | 84412.2 |
 
@@ -233,27 +233,27 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **19.9** |
-| **2** | **C** | **`libschnorr256k1`** | **direct** | **24.8** |
+| **1** | **C** | **`libschnorr256k1`** | **direct** | **24.8** |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **25.1** |
 | **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **25.7** |
 | **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **29.6** |
-| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.1 |
-| **6** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **32.5** |
+| **5** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **31.4** |
+| 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.0 |
 | 7 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.5 |
-| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.7 |
-| 9 | C | `libsecp256k1` | direct | 33.8 |
-| 10 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 34.2 |
-| 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 35.3 |
-| 12 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 35.3 |
-| 13 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 36.1 |
+| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.5 |
+| 9 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.7 |
+| 10 | C | `libsecp256k1` | direct | 33.8 |
+| 11 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 34.2 |
+| 12 | Go | `libsecp256k1` | cgo (the bench's own binding) | 35.3 |
+| 13 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 35.3 |
 | 14 | Go | `splitsecure` | pure Go | 43.1 |
-| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **46.7** |
-| **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **48.5** |
+| **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **48.5** |
+| **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **48.9** |
 | 17 | Rust | `k256` | pure Rust | 59.9 |
 | 18 | Rust | `secp256kfun` | pure Rust | 78.2 |
 | 19 | Go | `secp256k1-voi` | pure Go | 85.9 |
 | 20 | Go | `p256k1` | pure Go | 100.5 |
-| 21 | JVM | `bouncycastle` | pure Java | 126.4 |
+| 21 | JVM | `bouncycastle` | pure Java | 123.1 |
 | 22 | JVM | `bouncycastle` | pure Java | 133.4 |
 | 23 | Go | `btcec` | pure Go | 186.1 |
 | 24 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 208.2 |
@@ -261,13 +261,13 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 26 | Bun | `noble-curves` | pure JavaScript | 466.1 |
 | 27 | Bun | `noble-secp256k1` | pure JavaScript | 922.0 |
 | 28 | Python | `btclib-ecc` | pure Python | 1044.8 |
-| 29 | JVM | `bitcoin-s` | pure Scala | 1197.2 |
+| 29 | JVM | `bitcoin-s` | pure Scala | 1202.3 |
 | 30 | JVM | `bitcoin-s` | pure Scala | 1274.6 |
 | 31 | Node.js | `noble-curves` | pure JavaScript | 1314.5 |
 | 32 | Python | `embit` | pure Python | 2347.3 |
 | 33 | Node.js | `noble-secp256k1` | pure JavaScript | 2484.1 |
 | 34 | Python | `secp256k1lab` | pure Python | 9215.8 |
-| 35 | JVM | `nostr-java` | pure Java | 12529.3 |
+| 35 | JVM | `nostr-java` | pure Java | 12759.1 |
 | 36 | JVM | `nostr-java` | pure Java | 12974.1 |
 | 37 | Python | `bip340-reference` | pure Python | 89153.3 |
 
@@ -277,20 +277,20 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **21.0** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **19.5** |
 | **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **21.1** |
 | **3** | **C** | **`libschnorr256k1`** | **direct** | **21.5** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **27.7** |
-| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.9 |
-| 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.1 |
+| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **25.1** |
+| 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.5 |
+| 6 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.9 |
 | 7 | C | `libsecp256k1` | direct | 33.1 |
-| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.2 |
+| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.4 |
 | 9 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.9 |
 | 10 | Go | `libsecp256k1` | cgo (the bench's own binding) | 34.3 |
 | **11** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **37.0** |
-| **12** | **JVM** | **`kotlin`** | **pure Kotlin** | **45.5** |
-| 13 | Rust | `k256` | pure Rust | 46.8 |
-| 14 | Go | `splitsecure` | pure Go | 47.3 |
+| 12 | Rust | `k256` | pure Rust | 46.8 |
+| 13 | Go | `splitsecure` | pure Go | 47.3 |
+| **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **48.3** |
 | **15** | **JVM** | **`kotlin`** | **pure Kotlin** | **55.7** |
 | 16 | Go | `btcec` | pure Go | 78.4 |
 | 17 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 84.6 |
@@ -298,7 +298,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 19 | Rust | `secp256kfun` | pure Rust | 95.7 |
 | 20 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 104.6 |
 | 21 | Go | `p256k1` | pure Go | 123.5 |
-| 22 | JVM | `bouncycastle` | pure Java | 151.7 |
+| 22 | JVM | `bouncycastle` | pure Java | 142.0 |
 | 23 | JVM | `bouncycastle` | pure Java | 162.5 |
 | 24 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 195.1 |
 | 25 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 204.4 |
@@ -308,10 +308,10 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 29 | Node.js | `noble-curves` | pure JavaScript | 2112.5 |
 | 30 | Node.js | `noble-secp256k1` | pure JavaScript | 2913.4 |
 | 31 | Python | `embit` | pure Python | 4789.2 |
-| 32 | JVM | `bitcoin-s` | pure Scala | 6303.9 |
+| 32 | JVM | `bitcoin-s` | pure Scala | 7232.9 |
 | 33 | JVM | `bitcoin-s` | pure Scala | 7248.0 |
 | 34 | Python | `secp256k1lab` | pure Python | 13953.7 |
-| 35 | JVM | `nostr-java` | pure Java | 25856.0 |
+| 35 | JVM | `nostr-java` | pure Java | 25901.1 |
 | 36 | JVM | `nostr-java` | pure Java | 26677.3 |
 | 37 | Python | `bip340-reference` | pure Python | 177101.4 |
 
@@ -321,25 +321,25 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.3** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.9** |
 | **2** | **C** | **`libschnorr256k1`** | **direct** | **10.9** |
 | **3** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **11.2** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **15.2** |
+| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **14.4** |
 | **5** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **20.2** |
-| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **23.9** |
+| **6** | **JVM** | **`kotlin`** | **pure Kotlin** | **23.7** |
 | **7** | **JVM** | **`kotlin`** | **pure Kotlin** | **28.4** |
-| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.9 |
-| 9 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.9 |
+| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.6 |
+| 9 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.9 |
 | 10 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.1 |
-| 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 33.3 |
-| 12 | C | `libsecp256k1` | direct | 34.5 |
-| 13 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 35.4 |
+| 11 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 33.1 |
+| 12 | Go | `libsecp256k1` | cgo (the bench's own binding) | 33.3 |
+| 13 | C | `libsecp256k1` | direct | 34.5 |
 | 14 | Rust | `k256` | pure Rust | 47.8 |
 | 15 | Go | `splitsecure` | pure Go | 50.3 |
 | 16 | Go | `btcec` | pure Go | 83.6 |
 | 17 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 84.4 |
-| 18 | Go | `secp256k1-voi` | pure Go | 89.6 |
-| 19 | JVM | `bouncycastle` | pure Java | 89.8 |
+| 18 | JVM | `bouncycastle` | pure Java | 86.5 |
+| 19 | Go | `secp256k1-voi` | pure Go | 89.6 |
 | 20 | JVM | `bouncycastle` | pure Java | 93.3 |
 | 21 | Rust | `secp256kfun` | pure Rust | 98.7 |
 | 22 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 106.0 |
@@ -352,10 +352,10 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 29 | Node.js | `noble-curves` | pure JavaScript | 2162.1 |
 | 30 | Node.js | `noble-secp256k1` | pure JavaScript | 2938.6 |
 | 31 | Python | `embit` | pure Python | 4710.2 |
-| 32 | JVM | `bitcoin-s` | pure Scala | 6630.5 |
+| 32 | JVM | `bitcoin-s` | pure Scala | 6996.3 |
 | 33 | JVM | `bitcoin-s` | pure Scala | 7174.7 |
 | 34 | Python | `secp256k1lab` | pure Python | 13802.8 |
-| 35 | JVM | `nostr-java` | pure Java | 25810.6 |
+| 35 | JVM | `nostr-java` | pure Java | 25755.2 |
 | 36 | JVM | `nostr-java` | pure Java | 26620.8 |
 | 37 | Python | `bip340-reference` | pure Python | 172260.3 |
 
@@ -365,19 +365,19 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.2** |
-| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.3** |
+| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.3** |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **10.5** |
 | **3** | **C** | **`libschnorr256k1`** | **direct** | **10.6** |
-| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **12.0** |
-| 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 12.3 |
+| **4** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **11.2** |
+| 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 14.9 |
 | 6 | C | `libsecp256k1` | direct | 15.4 |
-| 7 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 15.5 |
+| 7 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 15.7 |
 | 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 15.8 |
 | **9** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **16.2** |
 | 10 | Go | `libsecp256k1` | cgo (the bench's own binding) | 16.3 |
 | 11 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 16.6 |
 | 12 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 18.7 |
-| **13** | **JVM** | **`kotlin`** | **pure Kotlin** | **22.7** |
+| **13** | **JVM** | **`kotlin`** | **pure Kotlin** | **23.0** |
 | 14 | Rust | `k256` | pure Rust | 23.1 |
 | 15 | Go | `splitsecure` | pure Go | 24.2 |
 | **16** | **JVM** | **`kotlin`** | **pure Kotlin** | **27.1** |
@@ -386,7 +386,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 19 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 41.9 |
 | 20 | Rust | `secp256kfun` | pure Rust | 48.5 |
 | 21 | Go | `p256k1` | pure Go | 50.2 |
-| 22 | JVM | `bouncycastle` | pure Java | 68.1 |
+| 22 | JVM | `bouncycastle` | pure Java | 69.1 |
 | 23 | JVM | `bouncycastle` | pure Java | 72.8 |
 | 24 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 97.8 |
 | 25 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 99.6 |
@@ -394,8 +394,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 27 | Bun | `noble-curves` | pure JavaScript | 156.5 |
 | 28 | Python | `btclib-ecc` | pure Python | 221.8 |
 | 29 | Node.js | `noble-secp256k1` | pure JavaScript | 250.2 |
-| 30 | JVM | `bitcoin-s` | pure Scala | 388.5 |
-| 31 | Node.js | `noble-curves` | pure JavaScript | 388.7 |
+| 30 | Node.js | `noble-curves` | pure JavaScript | 388.7 |
+| 31 | JVM | `bitcoin-s` | pure Scala | 446.2 |
 | 32 | JVM | `bitcoin-s` | pure Scala | 465.7 |
 | 33 | Python | `embit` | pure Python | 1553.9 |
 | 34 | Python | `secp256k1lab` | pure Python | 2300.2 |
@@ -407,23 +407,23 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| 1 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 30.7 |
-| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.4** |
+| 1 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 25.2 |
+| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.3** |
 | 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.3 |
 | 4 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.4 |
-| 5 | Go | `libsecp256k1` | cgo (the bench's own binding) | 32.8 |
-| **6** | **C** | **`libschnorr256k1`** | **direct** | **33.0** |
-| 7 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.1 |
+| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.4 |
+| 6 | Go | `libsecp256k1` | cgo (the bench's own binding) | 32.8 |
+| **7** | **C** | **`libschnorr256k1`** | **direct** | **33.0** |
 | 8 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 33.2 |
 | **9** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **33.6** |
 | 10 | C | `libsecp256k1` | direct | 33.6 |
 | 11 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 35.0 |
-| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **36.9** |
+| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **40.1** |
 | 13 | Go | `splitsecure` | pure Go | 49.4 |
 | 14 | Rust | `k256` | pure Rust | 53.1 |
 | **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **54.6** |
 | 16 | Rust | `secp256kfun` | pure Rust | 55.5 |
-| **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **64.9** |
+| **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **66.4** |
 | 18 | Go | `secp256k1-voi` | pure Go | 76.4 |
 | **19** | **JVM** | **`kotlin`** | **pure Kotlin** | **79.8** |
 | 20 | Go | `btcec` | pure Go | 150.7 |
@@ -431,8 +431,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 22 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 189.4 |
 | 23 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 195.2 |
 | 24 | JVM | `bouncycastle` | pure Java | 203.5 |
-| 25 | JVM | `bouncycastle` | pure Java | 205.6 |
-| 26 | JVM | `bitcoin-s` | pure Scala | 569.2 |
+| 25 | JVM | `bouncycastle` | pure Java | 217.0 |
+| 26 | JVM | `bitcoin-s` | pure Scala | 590.9 |
 | 27 | JVM | `bitcoin-s` | pure Scala | 622.3 |
 | 28 | Bun | `noble-curves` | pure JavaScript | 773.4 |
 | 29 | Python | `btclib-ecc` | pure Python | 931.1 |
@@ -448,23 +448,23 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| 1 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 29.5 |
-| **2** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.5** |
-| 3 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 31.6 |
+| 1 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 25.8 |
+| 2 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 29.5 |
+| 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 31.6 |
 | **4** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **32.1** |
-| 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.3 |
-| **6** | **C** | **`libschnorr256k1`** | **direct** | **32.3** |
-| 7 | C | `libsecp256k1` | direct | 32.4 |
-| 8 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.9 |
-| 9 | Go | `libsecp256k1` | cgo (the bench's own binding) | 33.0 |
-| 10 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.2 |
+| **5** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **32.1** |
+| 6 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.3 |
+| **7** | **C** | **`libschnorr256k1`** | **direct** | **32.3** |
+| 8 | C | `libsecp256k1` | direct | 32.4 |
+| 9 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.9 |
+| 10 | Go | `libsecp256k1` | cgo (the bench's own binding) | 33.0 |
 | 11 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 35.5 |
-| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **41.3** |
+| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **38.6** |
 | 13 | Go | `splitsecure` | pure Go | 49.3 |
-| **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **50.5** |
-| 15 | Rust | `k256` | pure Rust | 52.3 |
-| **16** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **53.7** |
-| 17 | Rust | `secp256kfun` | pure Rust | 56.3 |
+| 14 | Rust | `k256` | pure Rust | 52.3 |
+| **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **53.7** |
+| 16 | Rust | `secp256kfun` | pure Rust | 56.3 |
+| **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **64.3** |
 | 18 | Go | `secp256k1-voi` | pure Go | 76.3 |
 | **19** | **JVM** | **`kotlin`** | **pure Kotlin** | **78.6** |
 | 20 | Go | `btcec` | pure Go | 150.8 |
@@ -472,8 +472,8 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 22 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 189.5 |
 | 23 | JVM | `bouncycastle` | pure Java | 204.2 |
 | 24 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 205.0 |
-| 25 | JVM | `bouncycastle` | pure Java | 216.1 |
-| 26 | JVM | `bitcoin-s` | pure Scala | 559.2 |
+| 25 | JVM | `bouncycastle` | pure Java | 205.7 |
+| 26 | JVM | `bitcoin-s` | pure Scala | 571.9 |
 | 27 | JVM | `bitcoin-s` | pure Scala | 655.1 |
 | 28 | Bun | `noble-curves` | pure JavaScript | 792.5 |
 | 29 | Python | `btclib-ecc` | pure Python | 938.0 |
@@ -489,32 +489,32 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 
 | # | caller | library | via | µs |
 |---:|---|---|---|---:|
-| **1** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **30.6** |
-| 2 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 31.5 |
-| 3 | C | `libsecp256k1` | direct | 31.6 |
-| **4** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.9** |
-| 5 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 31.9 |
-| 6 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.0 |
-| **7** | **C** | **`libschnorr256k1`** | **direct** | **32.2** |
-| 8 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 32.2 |
+| 1 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 30.3 |
+| 2 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 31.4 |
+| 3 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 31.5 |
+| **4** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.6** |
+| 5 | C | `libsecp256k1` | direct | 31.6 |
+| **6** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **31.9** |
+| 7 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 32.0 |
+| **8** | **C** | **`libschnorr256k1`** | **direct** | **32.2** |
 | 9 | Go | `libsecp256k1` | cgo (the bench's own binding) | 33.0 |
 | 10 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 33.2 |
 | 11 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 35.1 |
-| 12 | Go | `splitsecure` | pure Go | 39.4 |
-| **13** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **39.6** |
-| 14 | Rust | `k256` | pure Rust | 52.7 |
-| 15 | Rust | `secp256kfun` | pure Rust | 55.3 |
-| **16** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **55.6** |
-| **17** | **JVM** | **`kotlin`** | **pure Kotlin** | **60.7** |
+| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **37.3** |
+| 13 | Go | `splitsecure` | pure Go | 39.4 |
+| **14** | **JVM** | **`kotlin`** | **pure Kotlin** | **52.1** |
+| 15 | Rust | `k256` | pure Rust | 52.7 |
+| 16 | Rust | `secp256kfun` | pure Rust | 55.3 |
+| **17** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **55.6** |
 | 18 | Go | `secp256k1-voi` | pure Go | 76.7 |
 | **19** | **JVM** | **`kotlin`** | **pure Kotlin** | **78.9** |
-| 20 | JVM | `bouncycastle` | pure Java | 116.4 |
+| 20 | JVM | `bouncycastle` | pure Java | 114.4 |
 | 21 | JVM | `bouncycastle` | pure Java | 118.5 |
 | 22 | Go | `btcec` | pure Go | 149.6 |
 | 23 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 192.0 |
 | 24 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 196.0 |
 | 25 | Go | `p256k1` | pure Go | 203.5 |
-| 26 | JVM | `bitcoin-s` | pure Scala | 534.0 |
+| 26 | JVM | `bitcoin-s` | pure Scala | 578.1 |
 | 27 | JVM | `bitcoin-s` | pure Scala | 609.5 |
 | 28 | Bun | `noble-curves` | pure JavaScript | 804.9 |
 | 29 | Python | `btclib-ecc` | pure Python | 943.3 |
@@ -531,25 +531,25 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 |---:|---|---|---|---:|
 | 1 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.02 |
 | 2 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.02 |
-| 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.05 |
+| 3 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.04 |
 | **4** | **C** | **`libschnorr256k1`** | **direct** | **0.06** |
 | 5 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.09 |
 | 6 | Rust | `libsecp256k1` | FFI: secp256k1 0.33.1 | 0.11 |
 | 7 | Go | `splitsecure` | pure Go | 0.12 |
 | 8 | C | `libsecp256k1` | direct | 0.13 |
 | **9** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.14** |
-| **10** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.15** |
+| **10** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.14** |
 | **11** | **JVM** | **`kotlin`** | **pure Kotlin** | **0.15** |
 | 12 | Rust | `k256` | pure Rust | 0.15 |
 | **13** | **JVM** | **`kotlin`** | **pure Kotlin** | **0.17** |
 | 14 | Go | `libsecp256k1` | cgo (the bench's own binding) | 0.20 |
-| **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.29** |
+| **15** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.26** |
 | 16 | Go | `btcec` | pure Go | 0.32 |
 | 17 | Go | `p256k1` | pure Go | 0.33 |
-| **18** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.45** |
-| 19 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.47 |
-| 20 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.50 |
-| 21 | JVM | `bouncycastle` | pure Java | 0.51 |
+| 18 | JVM | `bouncycastle` | pure Java | 0.44 |
+| **19** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.45** |
+| 20 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.47 |
+| 21 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.50 |
 | 22 | JVM | `bouncycastle` | pure Java | 0.61 |
 | 23 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 1.51 |
 | 24 | Bun | `noble-curves` | pure JavaScript | 2.31 |
@@ -561,7 +561,7 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 30 | Bun | `noble-secp256k1` | pure JavaScript | 6.70 |
 | 31 | Go | `secp256k1-voi` | pure Go | 6.72 |
 | 32 | Python | `secp256k1lab` | pure Python | 7.45 |
-| 33 | JVM | `bitcoin-s` | pure Scala | 17.6 |
+| 33 | JVM | `bitcoin-s` | pure Scala | 17.2 |
 | 34 | JVM | `bitcoin-s` | pure Scala | 18.0 |
 
 ### Tweak-add a secret key
@@ -582,22 +582,22 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 10 | Go | `btcec` | pure Go | 0.06 |
 | 11 | Go | `libsecp256k1` | cgo (the bench's own binding) | 0.06 |
 | **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.08** |
-| **13** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.11** |
-| **14** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.13** |
+| **13** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.10** |
+| **14** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.11** |
 | **15** | **JVM** | **`libschnorr256k1`** | **JNI: schnorr256k1-kmp 1.1.0** | **0.13** |
 | 16 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.13 |
 | 17 | JVM | `libsecp256k1` | JNI: secp256k1-kmp 0.24.0 | 0.13 |
 | 18 | Go | `secp256k1-voi` | pure Go | 0.15 |
 | 19 | Bun | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.16 |
 | 20 | Node.js | `libsecp256k1` | wasm: tiny-secp256k1 2.2.5 | 0.16 |
-| 21 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.21 |
+| 21 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.19 |
 | 22 | Kotlin/Native | `libsecp256k1` | cinterop: secp256k1-kmp 0.24.0 | 0.32 |
 | 23 | Bun | `noble-curves` | pure JavaScript | 1.24 |
 | 24 | Python | `embit` | pure Python | 1.44 |
 | 25 | Python | `btclib-ecc` | pure Python | 1.47 |
 | 26 | Python | `secp256k1lab` | pure Python | 1.64 |
 | 27 | Node.js | `noble-curves` | pure JavaScript | 1.86 |
-| 28 | JVM | `bitcoin-s` | pure Scala | 2.48 |
+| 28 | JVM | `bitcoin-s` | pure Scala | 2.42 |
 | 29 | JVM | `bitcoin-s` | pure Scala | 2.52 |
 | 30 | Python | `libsecp256k1` | CFFI: coincurve 21.0.0 | 73.3 |
 
@@ -618,9 +618,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 | 9 | Go | `splitsecure` | pure Go | 0.01 |
 | 10 | Rust | `secp256kfun` | pure Rust | 0.01 |
 | **11** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.02** |
-| **12** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.02** |
-| 13 | Go | `btcec` | pure Go | 0.02 |
-| 14 | Rust | `k256` | pure Rust | 0.02 |
+| 12 | Go | `btcec` | pure Go | 0.02 |
+| 13 | Rust | `k256` | pure Rust | 0.02 |
+| **14** | **Kotlin/Native** | **`kotlin`** | **pure Kotlin** | **0.03** |
 | 15 | JVM | `bouncycastle` | pure Java | 0.03 |
 | 16 | JVM | `bouncycastle` | pure Java | 0.03 |
 | 17 | Go | `libsecp256k1` | cgo (the bench's own binding) | 0.04 |
@@ -648,9 +648,9 @@ Measured on Cloud VM (4 vCPU) (Intel(R) Xeon(R) Processor @ 2.10GHz), **a shared
 - Rust: Linux, Rust, rustc 1.97.0 (2d8144b78 2026-07-07), x86_64, release profile, opt-level 3; libsecp256k1 secp256k1 0.33.1 (secp256k1-sys 0.14.1, libsecp256k1 6e2c8bc), k256 k256 0.14.0, secp256kfun secp256kfun 0.12.1 + schnorr_fun 0.13.0
 - Go: Linux 6.18.44-fc-v310, Go go1.26.10 (gc, linux/amd64), cgo: gcc 13.3.0 -O2; libsecp256k1 bitcoin-core/secp256k1 6e2c8bc, btcec github.com/btcsuite/btcd/btcec/v2 v2.5.1, p256k1 p256k1.mleku.dev v1.1.7 (git.mleku.dev/mleku/p256k1), secp256k1-voi gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b, splitsecure github.com/splitsecure/secp256k1-go v0.1.0
 - Kotlin/Native: Linux 6.18.44-fc-v310, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-9-g4c74415
-- Kotlin/Native: Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-19-gc5b6cdf
+- Kotlin/Native: Linux 6.18.44-fc-v338, Kotlin/Native 2.4.21; libsecp256k1 secp256k1-kmp 0.24.0, kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13
 - JVM: Linux 6.18.44-fc-v310, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-9-g4c74415, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2
-- JVM: Linux 6.18.44-fc-v338, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-19-gc5b6cdf, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2
+- JVM: Linux 6.18.44-fc-v338, Ubuntu OpenJDK 64-Bit Server VM 21.0.12.1+1-1-24.04.4-Ubuntu; libsecp256k1 secp256k1-kmp 0.24.0, libschnorr256k1 schnorr256k1-kmp 1.1.0 (JitPack f19cabc), kotlin schnorr256k1-kotlin v1.0.1-24-g867bb13, bouncycastle bcprov-jdk18on 1.86, bitcoin-s bitcoin-s-crypto_2.13 1.9.12 (Bouncy Castle runtime, bcprov-jdk18on 1.86), nostr-java nostr-java-core 2.4.2
 - Node.js: Linux 6.18.44-fc-v310, Node.js v22.23.4 (V8 12.4.254.21-node.57); libsecp256k1 tiny-secp256k1 2.2.5, noble-curves @noble/curves 2.4.0, noble-secp256k1 @noble/secp256k1 3.2.0
 - Bun: Linux 6.18.44-fc-v310, Bun 1.4.4 (JavaScriptCore d6375c72affe0f70222cdcb45012b10f0bf3a9d5); libsecp256k1 tiny-secp256k1 2.2.5, noble-curves @noble/curves 2.4.0, noble-secp256k1 @noble/secp256k1 3.2.0
 - Python: Linux 6.18.44-fc-v310, CPython 3.13.18 (Clang 23.1.3); libsecp256k1 coincurve 21.0.0 (libsecp256k1 v0.6.0, 0cdc758), btclib-ecc ecc 2026.11.7, embit embit 0.8.0 (embit.util.py_secp256k1), secp256k1lab secp256k1lab 7ed1812 (vendored), bip340-reference bips a34f044 bip-0340/reference.py (vendored)
