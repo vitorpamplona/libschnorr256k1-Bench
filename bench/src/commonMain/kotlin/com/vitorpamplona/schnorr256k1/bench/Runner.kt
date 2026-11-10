@@ -29,9 +29,9 @@ var sink: Long = 0
 
 /**
  * The Kotlin layers' benchmark, the twin of c/main.c: check every library against
- * vectors/v1.txt and the nostr-v1 dataset, time every frozen operation with the same method (warm-up, samples of at least
- * [sampleNs], nearest-rank percentiles), probe the known issues on separate keys, and render a
- * schema-v3 result (results/SCHEMA.md).
+ * vectors/v1.txt, BIP-340's own vectors and the nostr-v1 dataset, time every frozen operation with the same method
+ * (warm-up, samples of at least [sampleNs], nearest-rank percentiles), probe the known issues on separate keys, and
+ * render a schema-v4 result (results/SCHEMA.md).
  */
 class Runner(
     private val layer: String,
@@ -120,6 +120,77 @@ class Runner(
         )
     }
 
+    // ------------------------------------------------------------ BIP-340 vectors
+
+    private class Bip340Result(
+        val signOk: Boolean,
+        val knownPubOk: Boolean,
+        val knownPubWrongOnlyOddY: Boolean,
+        val verifyOk: Boolean,
+        val fastOk: Boolean,
+        /** KI-4: verifyFast accepts [BIP340_ODD_R]... */
+        val fastAcceptsOddR: Boolean,
+        /** ...and gets every other vector right. */
+        val fastOkButOddR: Boolean,
+        val batchOk: Boolean,
+    )
+
+    /**
+     * BIP-340's vectors through [i] (vectors/README.md, "BIP-340 vectors"), and a batch with one bad
+     * signature, first and then last. A call that throws on an invalid input counts as a rejection;
+     * on a valid one, as a wrong result.
+     */
+    private fun bip340(i: Impl): Bip340Result {
+        var signOk = true
+        var knownPubOk = true
+        var knownPubOddOnly = true
+        var verifyOk = true
+        var fastOk = true
+        var fastAcceptsOddR = false
+        var fastOkButOddR = true
+        for (b in BIP340) {
+            if (b.seckey != null && b.aux != null) {
+                if (Op.SIGN !in i.lacks) {
+                    val s = runCatching { i.sign(b.msg, b.seckey, b.aux) }.getOrNull()
+                    if (s == null || !s.contentEquals(b.sig)) {
+                        log("${i.library}: BIP-340 vector ${b.index}: sign differs")
+                        signOk = false
+                    }
+                }
+                if (Op.SIGN_KNOWN_PUB !in i.lacks) {
+                    val pub33 = reference.pubkeyCreate(b.seckey)?.let { reference.pubkeyCompress(it) } ?: error("reference BIP-340 pubkey")
+                    val s = runCatching { i.signKnownPub(b.msg, b.seckey, pub33, pub33.copyOfRange(1, 33), b.aux) }.getOrNull()
+                    if (s == null || !s.contentEquals(b.sig)) {
+                        log("${i.library}: BIP-340 vector ${b.index}: sign.knownPub differs")
+                        knownPubOk = false
+                        if (pub33[0] != 0x03.toByte()) knownPubOddOnly = false
+                    }
+                }
+            }
+            if (runCatching { i.verify(b.sig, b.msg, b.pub) }.getOrDefault(false) != b.expected) {
+                log("${i.library}: BIP-340 vector ${b.index}: verify ${if (b.expected) "rejects" else "accepts"} it")
+                verifyOk = false
+            }
+            if (i.hasVerifyFast && runCatching { i.verifyFast(b.sig, b.msg, b.pub) }.getOrDefault(false) != b.expected) {
+                log("${i.library}: BIP-340 vector ${b.index}: verifyFast ${if (b.expected) "rejects" else "accepts"} it")
+                fastOk = false
+                if (b.index == BIP340_ODD_R) fastAcceptsOddR = true else fastOkButOddR = false
+            }
+        }
+        var batchOk = true
+        if (i.hasVerifyBatch) {
+            for (at in listOf(0, v.batchSig.size - 1)) {
+                val sigs = v.batchSig.toMutableList()
+                sigs[at] = sigs[at].copyOf().also { it[63] = (it[63] + 1).toByte() }
+                if (runCatching { i.verifyBatch(v.xOnly[0], sigs, v.batchMsg) }.getOrDefault(false)) {
+                    log("${i.library}: verifyBatch accepts a batch whose signature $at is bad")
+                    batchOk = false
+                }
+            }
+        }
+        return Bip340Result(signOk, knownPubOk, !knownPubOk && knownPubOddOnly, verifyOk, fastOk, fastAcceptsOddR, fastOkButOddR, batchOk)
+    }
+
     /** One page's author groups: batch verify for groups of two or more. */
     private fun verifyPage(
         i: Impl,
@@ -135,6 +206,9 @@ class Runner(
     private class Correctness(
         val ok: Map<Op, Boolean>,
         val knownPubWrongOnlyOddY: Boolean,
+        /** KI-4 as observed, and the fast ops it explains: those whose only fault is the odd-y R. */
+        val fastAcceptsOddR: Boolean?,
+        val explainedByOddR: Set<Op>,
     )
 
     /** Whether [digest] is the output of an op [i] lacks (its digest is not checked). */
@@ -169,8 +243,15 @@ class Runner(
         ) {
             seckeyOk = false
         }
-        val batchOk = !i.hasVerifyBatch || i.verifyBatch(v.xOnly[0], v.batchSig, v.batchMsg)
-        val verifyOk = good["verify"] == true && good["verify.tampered"] == true
+        val bip = bip340(i)
+        val batchOk = (!i.hasVerifyBatch || i.verifyBatch(v.xOnly[0], v.batchSig, v.batchMsg)) && bip.batchOk
+        val verifyOk = good["verify"] == true && good["verify.tampered"] == true && bip.verifyOk
+        val fastOkButOddR = fastOk && bip.fastOkButOddR
+        fastOk = fastOk && bip.fastOk
+        if (!bip.knownPubOk) {
+            knownPubOk = false
+            if (!bip.knownPubWrongOnlyOddY) knownPubOddOnly = false
+        }
 
         val dd = datasetDigests(i).mapValues { (k, h) -> DatasetV1.digests[k] == h }
         dd
@@ -178,16 +259,16 @@ class Runner(
             .keys
             .filter { !lacked(i, it) }
             .forEach { log("${i.library}: $it digest differs from the dataset's") }
-        val dsVerifyOk = dd["nostr.verify"] == true && dd["nostr.verify.tampered"] == true
+        val dsVerifyOk = dd["nostr.verify"] == true && dd["nostr.verify.tampered"] == true && bip.verifyOk
         val dsFastOk = !i.hasVerifyFast || (0 until ds.n).all { i.verifyFast(ds.sig[it], ds.id[it], ds.pub[it]) }
-        val dsBatchOk = !i.hasVerifyBatch || (0 until ds.pages).all { verifyPage(i, it) }
+        val dsBatchOk = (!i.hasVerifyBatch || (0 until ds.pages).all { verifyPage(i, it) }) && bip.batchOk
         return Correctness(
             mapOf(
                 Op.VERIFY_SAME to verifyOk,
                 Op.VERIFY_MANY to verifyOk,
                 Op.VERIFY_FAST_SAME to (verifyOk && fastOk),
                 Op.VERIFY_BATCH to batchOk,
-                Op.SIGN to (good["sign"] == true),
+                Op.SIGN to (good["sign"] == true && bip.signOk),
                 Op.SIGN_KNOWN_PUB to knownPubOk,
                 Op.PUB_CREATE to (good["pubkey.create"] == true),
                 Op.PUB_COMPRESS to (good["pubkey.compress"] == true),
@@ -196,11 +277,18 @@ class Runner(
                 Op.TWEAK_MUL to (good["tweak.mul"] == true),
                 Op.TWEAK_ADD to (good["tweak.add"] == true),
                 Op.NOSTR_VERIFY to dsVerifyOk,
-                Op.NOSTR_VERIFY_FAST to (dsVerifyOk && dsFastOk),
+                Op.NOSTR_VERIFY_FAST to (dsVerifyOk && dsFastOk && bip.fastOk),
                 Op.NOSTR_BATCH to dsBatchOk,
                 Op.NOSTR_ECDH to (dd["nostr.ecdh"] == true),
             ),
             !knownPubOk && knownPubOddOnly,
+            if (i.hasVerifyFast) bip.fastAcceptsOddR else null,
+            buildSet {
+                if (bip.fastAcceptsOddR && fastOkButOddR) {
+                    if (verifyOk) add(Op.VERIFY_FAST_SAME)
+                    if (dsVerifyOk && dsFastOk) add(Op.NOSTR_VERIFY_FAST)
+                }
+            },
         )
     }
 
@@ -360,6 +448,7 @@ class Runner(
     private fun probeIssues(
         i: Impl,
         knownPubOddOnly: Boolean,
+        fastAcceptsOddR: Boolean?,
     ): Map<String, Boolean?> {
         val ki1: Boolean? =
             if (!i.hasVerifyBatch) {
@@ -372,7 +461,7 @@ class Runner(
             }
         // KI-3, on odd-y keys of a separate set: tweak-mul the odd-y point, then verify a valid
         // signature for the x-only form.
-        if (Op.TWEAK_MUL in i.lacks) return linkedMapOf("KI-1" to ki1, "KI-2" to knownPubOddOnly, "KI-3" to null)
+        if (Op.TWEAK_MUL in i.lacks) return linkedMapOf("KI-1" to ki1, "KI-2" to knownPubOddOnly, "KI-3" to null, "KI-4" to fastAcceptsOddR)
         var rejected = 0
         var found = 0
         var k = 0
@@ -387,18 +476,20 @@ class Runner(
             i.tweakMul(pub33, v.tweak[0])
             if (!i.verify(sig, msg, pub33.copyOfRange(1, 33))) rejected++
         }
-        return linkedMapOf("KI-1" to ki1, "KI-2" to knownPubOddOnly, "KI-3" to (rejected > 0))
+        return linkedMapOf("KI-1" to ki1, "KI-2" to knownPubOddOnly, "KI-3" to (rejected > 0), "KI-4" to fastAcceptsOddR)
     }
 
     /** What [runAll] checks, without the timing: each op's correctness, and the known issues seen. */
     class Checks(
         val correct: Map<Op, Boolean>,
         val knownIssues: Map<String, Boolean?>,
+        /** The wrong ops KI-4 explains: a fast verify whose only fault is BIP-340's odd-y R. */
+        val explainedByOddR: Set<Op>,
     )
 
     fun check(i: Impl): Checks {
         val c = correctness(i)
-        return Checks(c.ok, probeIssues(i, c.knownPubWrongOnlyOddY))
+        return Checks(c.ok, probeIssues(i, c.knownPubWrongOnlyOddY, c.fastAcceptsOddR), c.explainedByOddR)
     }
 
     /**
@@ -412,7 +503,7 @@ class Runner(
             log("${i.library} (${i.binding}): known issues ${c.knownIssues}")
             c.correct.filterValues { !it }.keys.filter { it !in i.lacks }.mapNotNull { op ->
                 val ki = COVERS[op]
-                if (ki != null && c.knownIssues[ki] == true) {
+                if (ki != null && c.knownIssues[ki] == true && (ki != "KI-4" || op in c.explainedByOddR)) {
                     log("${i.library} ${op.id}: wrong, as $ki says")
                     null
                 } else {
@@ -425,14 +516,53 @@ class Runner(
         /**
          * The ops each known issue makes wrong on the vectors. KI-1 and KI-3 leave every row
          * correct: a valid batch is accepted, and the vectors' tweak-mul keys share no x with the
-         * verify keys.
+         * verify keys. KI-4 explains a fast-verify row only when the odd-y R is all that is wrong
+         * with it ([Checks.explainedByOddR]).
          */
-        val COVERS = mapOf(Op.SIGN_KNOWN_PUB to "KI-2")
+        val COVERS =
+            mapOf(
+                Op.SIGN_KNOWN_PUB to "KI-2",
+                Op.VERIFY_FAST_SAME to "KI-4",
+                Op.NOSTR_VERIFY_FAST to "KI-4",
+            )
+
+        /** The BIP-340 vector whose only fault is R's odd y (KI-4). */
+        const val BIP340_ODD_R = 6
+
+        /** BIP-340's test vectors with a 32-byte message, the size every operation here takes. */
+        val BIP340: List<Bip340Vector> =
+            Bip340Csv.rows.filter { it[4].length == 64 }.map { f ->
+                Bip340Vector(
+                    index = f[0].toInt(),
+                    seckey = f[1].takeIf { it.isNotEmpty() }?.let { Vectors.hex(it) },
+                    pub = Vectors.hex(f[2]),
+                    aux = f[3].takeIf { it.isNotEmpty() }?.let { Vectors.hex(it) },
+                    msg = Vectors.hex(f[4]),
+                    sig = Vectors.hex(f[5]),
+                    expected =
+                        when (f[6]) {
+                            "TRUE" -> true
+                            "FALSE" -> false
+                            else -> error("BIP-340 vector ${f[0]}: result ${f[6]}")
+                        },
+                )
+            }
     }
+
+    /** A row of vectors/bip340/test-vectors.csv. */
+    class Bip340Vector(
+        val index: Int,
+        val seckey: ByteArray?,
+        val pub: ByteArray,
+        val aux: ByteArray?,
+        val msg: ByteArray,
+        val sig: ByteArray,
+        val expected: Boolean,
+    )
 
     // ------------------------------------------------------------ result
 
-    /** Checks, times and probes every library; returns the schema-v3 JSON. */
+    /** Checks, times and probes every library; returns the schema-v4 JSON. */
     fun runAll(
         context: Map<String, String>,
         only: String? = null,
@@ -449,13 +579,14 @@ class Runner(
                     timeOp(i, op)
                 }
             // After the timing too: KI-3 is about state the calls leave behind.
-            val ki = probeIssues(i, c.knownPubWrongOnlyOddY)
+            val ki = probeIssues(i, c.knownPubWrongOnlyOddY, c.fastAcceptsOddR)
             for (op in Op.entries) {
                 val tm = t[op] ?: continue
                 val kis =
                     buildList {
                         if ((op == Op.VERIFY_BATCH || op == Op.NOSTR_BATCH) && ki["KI-1"] == true) add("\"KI-1\"")
                         if (op == Op.SIGN_KNOWN_PUB && ki["KI-2"] == true) add("\"KI-2\"")
+                        if ((op == Op.VERIFY_FAST_SAME || op == Op.NOSTR_VERIFY_FAST) && ki["KI-4"] == true) add("\"KI-4\"")
                     }.joinToString(", ")
                 if (rows.isNotEmpty()) rows.append(",")
                 rows.append(
@@ -469,7 +600,8 @@ class Runner(
         }
         val ctx = context.entries.joinToString(",\n") { "    \"${it.key}\": ${jsonString(it.value)}" }
         val libs = impls.filter { only == null || it.library == only }.joinToString(", ") { "\"${it.library}\": ${jsonString(it.version)}" }
-        return "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
+        return "{\n  \"schema\": 4,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"${VectorsV1.FILE_SHA256}\",\n" +
+            "  \"bip340Sha256\": \"${Bip340Csv.FILE_SHA256}\",\n" +
             "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"${ds.sha256Hex}\",\n" +
             "  \"layer\": \"$layer\",\n  \"quick\": $quick,\n  \"context\": {\n$ctx,\n    \"libraries\": { $libs }\n  },\n" +
             "  \"rows\": [$rows\n  ],\n  \"known_issues_observed\": {$issues\n  }\n}\n"

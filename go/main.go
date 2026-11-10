@@ -4,7 +4,8 @@
 // c/main.c (same derivation, checks, operations, timing, known-issue probes and JSON).
 //
 //	bench run   --vectors FILE --dataset DATA --dataset-digests FILE [opts]
-//	            check every library, time every operation, print a result (schema 3) as JSON
+//	            check every library (BIP-340's own vectors, bip340/test-vectors.csv beside the
+//	            vectors file, included), time every operation, print a result (schema 4) as JSON
 //	bench check --vectors FILE --dataset DATA --dataset-digests FILE [--library NAME]
 //	            the same checks and probes without the timing; exits 1 on a wrong result that
 //	            no observed known issue explains (Runner.COVERS), or if the reference shows one
@@ -351,8 +352,8 @@ func addSmallToS(sig []byte, d int) {
 }
 
 type issues struct {
-	ki1, ki2, ki3 bool // observed
-	ki1Tested     bool
+	ki1, ki2, ki3, ki4   bool // observed
+	ki1Tested, ki4Tested bool
 }
 
 // probeIssues runs after timing, on keys derived under their own labels, so their cache side
@@ -404,7 +405,7 @@ type checked struct {
 // check runs every correctness check on b, before any timing: the digests against the vectors
 // and the dataset, and the direct checks of vectors/README.md. It returns the per-op
 // correctness; the known-issue probes are run by the caller after timing.
-func check(b *backend, vec, dsd map[string]string) ([nOps]bool, bool) {
+func check(b *backend, vec, dsd map[string]string) checkResult {
 	d := digests(b)
 	var good [nDigests]bool
 	for i := range d {
@@ -439,7 +440,17 @@ func check(b *backend, vec, dsd map[string]string) ([nOps]bool, bool) {
 	if b.verifyBatch != nil && !b.verifyBatch(V.xonly[0], V.batchSig[:], V.batchMsg[:]) {
 		batchOK = false
 	}
-	verifyOK := good[dVerify] && good[dVerifyTampered]
+	br := bip340Check(b)
+	if !br.knownPubOK {
+		knownPubOK = false
+		if !br.knownPubOddOnly {
+			knownPubOddOnly = false
+		}
+	}
+	batchOK = batchOK && br.batchOK
+	fastOKButOddR := fastOK && br.fastOKButOddR
+	fastOK = fastOK && br.fastOK
+	verifyOK := good[dVerify] && good[dVerifyTampered] && br.verifyOK
 
 	dd := datasetDigests(b)
 	var dgood [nDsDigests]bool
@@ -464,19 +475,36 @@ func check(b *backend, vec, dsd map[string]string) ([nOps]bool, bool) {
 			dsBatchOK = false
 		}
 	}
-	dsVerifyOK := dgood[ddVerify] && dgood[ddVerifyTampered]
+	dsVerifyOK := dgood[ddVerify] && dgood[ddVerifyTampered] && br.verifyOK
+	dsBatchOK = dsBatchOK && br.batchOK
 	var ok [nOps]bool
 	ok[opVerifySame], ok[opVerifyMany], ok[opVerifyFastSame] = verifyOK, verifyOK, verifyOK && fastOK
-	ok[opVerifyBatch], ok[opSign], ok[opSignKnownPub] = batchOK, good[dSign], knownPubOK
+	ok[opVerifyBatch], ok[opSign], ok[opSignKnownPub] = batchOK, good[dSign] && br.signOK, knownPubOK
 	ok[opPubCreate], ok[opPubCompress], ok[opSeckeyVerify] = good[dPubCreate], good[dPubCompress], seckeyOK
 	ok[opEcdh], ok[opTweakMul], ok[opTweakAdd] = good[dEcdh], good[dTweakMul], good[dTweakAdd]
-	ok[opNostrVerify], ok[opNostrVerifyFast] = dsVerifyOK, dsVerifyOK && dsFastOK
+	ok[opNostrVerify], ok[opNostrVerifyFast] = dsVerifyOK, dsVerifyOK && dsFastOK && br.fastOK
 	ok[opNostrBatch], ok[opNostrEcdh] = dsBatchOK, dgood[ddEcdh] && dd[ddEcdh].ok
-	return ok, !knownPubOK && knownPubOddOnly
+	c := checkResult{ok: ok, knownPubWrong: !knownPubOK && knownPubOddOnly, explainedByOddR: map[int]bool{}}
+	c.ki4Tested = b.verifyFast != nil
+	c.ki4 = c.ki4Tested && br.fastAcceptsOddR
+	if c.ki4 && fastOKButOddR {
+		c.explainedByOddR[opVerifyFastSame] = verifyOK
+		c.explainedByOddR[opNostrVerifyFast] = dsVerifyOK && dsFastOK
+	}
+	return c
+}
+
+type checkResult struct {
+	ok             [nOps]bool
+	knownPubWrong  bool // sign.knownPub wrong, and only for odd-y keys (KI-2)
+	ki4, ki4Tested bool
+	// the wrong ops KI-4 explains: a fast verify whose only fault is BIP-340's odd-y R
+	explainedByOddR map[int]bool
 }
 
 // covers: the ops each known issue makes wrong (Runner.COVERS, COVERS in scripts/table.py).
-var covers = map[int]string{opSignKnownPub: "KI-2"}
+// KI-4 explains a fast verify only when the odd-y R is all that is wrong with it.
+var covers = map[int]string{opSignKnownPub: "KI-2", opVerifyFastSame: "KI-4", opNostrVerifyFast: "KI-4"}
 
 func (i issues) observed(ki string) bool {
 	switch ki {
@@ -486,6 +514,8 @@ func (i issues) observed(ki string) bool {
 		return i.ki2
 	case "KI-3":
 		return i.ki3
+	case "KI-4":
+		return i.ki4
 	}
 	return false
 }
@@ -619,6 +649,7 @@ func main() {
 		die("the dataset is not the one its digests file describes")
 	}
 	vec, vecSha := readDigests(vecPath)
+	bipSha := loadBip340(vecPath)
 
 	mods := moduleVersions()
 	libsecp256k1Backend.version = "bitcoin-core/secp256k1 " + libsecp256k1Version
@@ -642,7 +673,8 @@ func main() {
 	var observed []string
 	var unexplained []string
 	for _, b := range selected {
-		ok, knownPubWrong := check(b, vec, dsd)
+		c := check(b, vec, dsd)
+		ok := c.ok
 		var t [nOps]timing
 		for op := 0; op < nOps; op++ {
 			if !timed {
@@ -653,7 +685,8 @@ func main() {
 			runtime.GC()
 			t[op] = timeOp(b, op, quick)
 		}
-		is := probeIssues(b, knownPubWrong)
+		is := probeIssues(b, c.knownPubWrong)
+		is.ki4, is.ki4Tested = c.ki4, c.ki4Tested
 		for op := 0; op < nOps; op++ {
 			if !t[op].timed {
 				continue
@@ -665,11 +698,14 @@ func main() {
 			if op == opSignKnownPub && is.ki2 {
 				ki = `"KI-2"`
 			}
+			if (op == opVerifyFastSame || op == opNostrVerifyFast) && is.ki4 {
+				ki = `"KI-4"`
+			}
 			rows = append(rows, fmt.Sprintf(`    { "op": "%s", "library": "%s", "binding": "%s", "median_ns": %.1f, "p5_ns": %.1f, "p95_ns": %.1f, "samples": %d, "correct": %t, "known_issues": [%s] }`,
 				opNames[op], b.name, b.binding, t[op].median, t[op].p5, t[op].p95, t[op].samples, ok[op], ki))
 			if !ok[op] {
-				if c, has := covers[op]; has && is.observed(c) {
-					fmt.Fprintf(os.Stderr, "%s %s: wrong, as %s says\n", b.name, opNames[op], c)
+				if k, has := covers[op]; has && is.observed(k) && (k != "KI-4" || c.explainedByOddR[op]) {
+					fmt.Fprintf(os.Stderr, "%s %s: wrong, as %s says\n", b.name, opNames[op], k)
 				} else {
 					unexplained = append(unexplained, b.name+" "+opNames[op])
 				}
@@ -679,9 +715,13 @@ func main() {
 		if is.ki1Tested {
 			ki1 = strconv.FormatBool(is.ki1)
 		}
-		observed = append(observed, fmt.Sprintf(`    "%s": { "KI-1": %s, "KI-2": %t, "KI-3": %t }`, b.name, ki1, is.ki2, is.ki3))
-		fmt.Fprintf(os.Stderr, "%s: KI-1 %s, KI-2 %t, KI-3 %t\n", b.name, ki1, is.ki2, is.ki3)
-		if b == backends[0] && (is.ki1 || is.ki2 || is.ki3) {
+		ki4 := "null"
+		if is.ki4Tested {
+			ki4 = strconv.FormatBool(is.ki4)
+		}
+		observed = append(observed, fmt.Sprintf(`    "%s": { "KI-1": %s, "KI-2": %t, "KI-3": %t, "KI-4": %s }`, b.name, ki1, is.ki2, is.ki3, ki4))
+		fmt.Fprintf(os.Stderr, "%s: KI-1 %s, KI-2 %t, KI-3 %t, KI-4 %s\n", b.name, ki1, is.ki2, is.ki3, ki4)
+		if b == backends[0] && (is.ki1 || is.ki2 || is.ki3 || is.ki4) {
 			unexplained = append(unexplained, "the reference shows a known issue: the probes are wrong")
 		}
 	}
@@ -701,7 +741,8 @@ func main() {
 	}
 	runtimeDesc := fmt.Sprintf("Go %s (%s, %s/%s), cgo: %s -O2", runtime.Version(), runtime.Compiler, runtime.GOOS, runtime.GOARCH, cgoCompiler)
 	o := os.Stdout
-	fmt.Fprintf(o, "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vecSha)
+	fmt.Fprintf(o, "{\n  \"schema\": 4,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vecSha)
+	fmt.Fprintf(o, "  \"bip340Sha256\": \"%s\",\n", bipSha)
 	fmt.Fprintf(o, "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"%s\",\n  \"layer\": \"go\",\n", D.sha)
 	fmt.Fprintf(o, "  \"quick\": %t,\n  \"context\": {\n", quick)
 	fmt.Fprintf(o, "    \"date\": \"%s\",\n", time.Now().UTC().Format("2006-01-02"))

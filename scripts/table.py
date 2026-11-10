@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Renders schema-v3 results (results/SCHEMA.md) as Markdown comparison tables.
+"""Renders schema-v4 results (results/SCHEMA.md) as Markdown comparison tables.
 
     scripts/table.py                     # every full run under results/, one table per device
     scripts/table.py results/jvm/X.json results/c/Y.json
@@ -11,7 +11,7 @@
 Each device gets one table per layer: a row per operation, a column per library, with the median in
 microseconds. A wrong result shows as
 "wrong" and the known issue that explains it; an operation a library lacks shows "-". Files whose
-schema, vectors or vectors file hash are not this checkout's are skipped with a warning.
+schema, vectors, BIP-340 vectors or dataset are not this checkout's are skipped with a warning.
 
 --readme uses the full runs from a dedicated machine under results/, or, while there are none,
 the full shared ones, labelled as such (never --quick runs). It writes one ranked table per operation (README_OPS, verification first) for the device of the
@@ -35,7 +35,7 @@ LAYERS = ["c", "rust", "go", "native", "jvm", "android", "node", "bun", "python"
 # Column order: the reference, the two this bench started with, then every other library a run
 # reports, alphabetically (libraries()).
 LIBRARIES = ["libsecp256k1", "libschnorr256k1", "kotlin"]
-SCHEMA = 3
+SCHEMA = 4
 
 
 def libraries(run):
@@ -99,12 +99,14 @@ def collect(args, quick):
         else:
             paths.append(a)
     sha = file_sha("vectors", "v1.txt")
+    bip_sha = file_sha("vectors", "bip340", "test-vectors.csv")
     ds_sha = file_sha("datasets", "nostr-v1.bin")
     runs = []
     for p in sorted(paths):
         with open(p) as f:
             r = json.load(f)
         if (r.get("schema") != SCHEMA or r.get("vectors") != "v1" or r.get("vectorsSha256") != sha
+                or r.get("bip340Sha256") != bip_sha
                 or r.get("dataset") != "nostr-v1" or r.get("datasetSha256") != ds_sha):
             print(f"skipping {p}: not schema {SCHEMA} on this checkout's vectors and dataset", file=sys.stderr)
             continue
@@ -165,8 +167,9 @@ def render(runs):
     return "\n".join(out)
 
 
-# The ops each known issue makes wrong (Runner.COVERS in the Kotlin layers).
-COVERS = {"sign.knownPub": "KI-2"}
+# The ops each known issue makes wrong (Runner.COVERS in the Kotlin layers). The runners mark a
+# verifyFast row KI-4 only when the odd-y R is all that is wrong with it.
+COVERS = {"sign.knownPub": "KI-2", "verifyFast.sameKey": "KI-4", "nostr.verifyFast": "KI-4"}
 
 
 def unexplained(runs):

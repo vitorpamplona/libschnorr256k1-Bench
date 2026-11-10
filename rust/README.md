@@ -1,11 +1,12 @@
 # The rust layer
 
 BIP-340 libraries called from Rust: the twin of the c layer (`c/main.c`) in a cargo binary
-crate. Same inputs (`vectors/v1.txt`, `datasets/nostr-v1.bin`), the same checks before any
+crate. Same inputs (`vectors/v1.txt`, BIP-340's `vectors/bip340/test-vectors.csv`,
+`datasets/nostr-v1.bin`), the same checks before any
 timing, the same sixteen operations with the same inputs and counting, the same timing (1 s
 warm-up, 20 samples of at least 100 ms; `--quick`: 0.2 s, 5 samples of at least 20 ms; median
 and nearest-rank 5th/95th percentile of per-sample time ÷ operations), the same known-issue
-probes and the same JSON, with `"schema": 3` and `"layer": "rust"`.
+probes and the same JSON, with `"schema": 4` and `"layer": "rust"`.
 
 ```bash
 rust/run.sh --device "ThinkPad X1 Gen 11" --machine dedicated --out results/rust/2026-11-08-thinkpad-x1-gen-11.json
@@ -30,7 +31,7 @@ and, for libsecp256k1, the commit `secp256k1-sys` bundles (`depend/secp256k1-HEA
 
 None of the three has a fast or a batch verify, so `verifyFast.*` time the full verify (as for
 libsecp256k1 everywhere) and there are no `verifyBatch200.perSig` or
-`nostr.verifyBatchByAuthor` rows, and KI-1 is `null`.
+`nostr.verifyBatchByAuthor` rows, and KI-1 and KI-4 are `null`.
 
 ### Not included
 

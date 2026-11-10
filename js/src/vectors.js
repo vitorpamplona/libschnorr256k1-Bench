@@ -96,3 +96,34 @@ export function parseDigests(text) {
   }
   return m;
 }
+
+/**
+ * BIP-340's own test vectors (vectors/bip340/test-vectors.csv; vectors/README.md, "BIP-340
+ * vectors"): the rows with a 32-byte message, the size every operation here takes.
+ */
+export function parseBip340(text) {
+  const out = [];
+  for (const raw of text.split('\n').slice(1)) {
+    const line = raw.replace(/\r$/, '');
+    if (!line) continue;
+    // index, secret key, public key, aux_rand, message, signature, verification result, comment
+    const f = line.split(',');
+    if (f.length < 7) throw new Error('a BIP-340 vector line has too few fields');
+    if (f[4].length !== 64) continue;
+    if (f[6] !== 'TRUE' && f[6] !== 'FALSE') throw new Error(`BIP-340 vector ${f[0]}: result ${f[6]}`);
+    out.push({
+      index: Number(f[0]),
+      seckey: f[1] ? fromHex(f[1]) : null,
+      pub: fromHex(f[2]),
+      aux: f[3] ? fromHex(f[3]) : null,
+      msg: fromHex(f[4]),
+      sig: fromHex(f[5]),
+      expected: f[6] === 'TRUE',
+    });
+  }
+  if (!out.length) throw new Error('no BIP-340 vector has a 32-byte message');
+  return out;
+}
+
+/** The BIP-340 vector whose only fault is R's odd y (KI-4). */
+export const BIP340_ODD_R = 6;

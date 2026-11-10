@@ -1,6 +1,6 @@
 //! The rust layer: BIP-340 libraries called from Rust. The twin of c/main.c: the same inputs,
-//! checks, operations, timing, known-issue probes and JSON (schema 3: results/SCHEMA.md plus
-//! the new layers).
+//! checks (BIP-340's own vectors, read from bip340/test-vectors.csv beside the vectors file,
+//! included), operations, timing, known-issue probes and JSON (schema 4: results/SCHEMA.md).
 //!
 //!   bench run --vectors FILE --dataset DATA --dataset-digests FILE [opts]
 //!                            check every library against both, time every operation, print
@@ -23,6 +23,8 @@ mod vectors;
 use std::collections::HashMap;
 use std::fs;
 use std::hint::black_box;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::Path;
 use std::process::exit;
 use std::time::Instant;
 
@@ -477,18 +479,167 @@ fn pct(v: &[f64], p: f64) -> f64 {
     v[(r - 1) as usize]
 }
 
+// ---------------------------------------------------------------- BIP-340 vectors
+
+/// A row of vectors/bip340/test-vectors.csv with a 32-byte message, the size every operation here
+/// takes (vectors/README.md, "BIP-340 vectors").
+struct Bip340Vector {
+    index: u32,
+    seckey: Option<[u8; 32]>,
+    aux: Option<[u8; 32]>,
+    pubkey: [u8; 32],
+    msg: [u8; 32],
+    sig: [u8; 64],
+    expected: bool,
+}
+
+/// The vector whose only fault is R's odd y (KI-4).
+const BIP340_ODD_R: u32 = 6;
+
+fn unhex<const L: usize>(s: &str) -> [u8; L] {
+    if s.len() != 2 * L {
+        die("a BIP-340 vector field has the wrong length");
+    }
+    let mut out = [0u8; L];
+    for (i, o) in out.iter_mut().enumerate() {
+        *o = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).unwrap_or_else(|_| die("a BIP-340 vector is not hex"));
+    }
+    out
+}
+
+fn load_bip340(text: &str) -> Vec<Bip340Vector> {
+    let mut out = Vec::new();
+    for line in text.lines().skip(1) {
+        let line = line.trim_end_matches('\r');
+        if line.is_empty() {
+            continue;
+        }
+        // index, secret key, public key, aux_rand, message, signature, verification result, comment
+        let f: Vec<&str> = line.splitn(8, ',').collect();
+        if f.len() < 7 {
+            die("a BIP-340 vector line has too few fields");
+        }
+        if f[4].len() != 64 {
+            continue;
+        }
+        out.push(Bip340Vector {
+            index: f[0].parse().unwrap_or_else(|_| die("a BIP-340 vector index is not a number")),
+            seckey: (!f[1].is_empty()).then(|| unhex(f[1])),
+            aux: (!f[3].is_empty()).then(|| unhex(f[3])),
+            pubkey: unhex(f[2]),
+            msg: unhex(f[4]),
+            sig: unhex(f[5]),
+            expected: match f[6] {
+                "TRUE" => true,
+                "FALSE" => false,
+                _ => die("a BIP-340 vector's result is neither TRUE nor FALSE"),
+            },
+        });
+    }
+    if out.is_empty() {
+        die("no BIP-340 vector has a 32-byte message");
+    }
+    out
+}
+
+/// A call that panics on an invalid input counts as a rejection; on a valid one, as a wrong result.
+fn guard(f: impl FnOnce() -> bool) -> bool {
+    catch_unwind(AssertUnwindSafe(f)).unwrap_or(false)
+}
+
+struct Bip340Result {
+    sign_ok: bool,
+    known_pub_ok: bool,
+    known_pub_odd_only: bool,
+    verify_ok: bool,
+    fast_ok: bool,
+    /// KI-4: verify_fast accepts BIP340_ODD_R...
+    fast_accepts_odd_r: bool,
+    /// ...and gets every other vector right.
+    fast_ok_but_odd_r: bool,
+    batch_ok: bool,
+}
+
+/// BIP-340's vectors through the library, and a batch with one bad signature, first then last.
+fn bip340(b: &dyn Backend, r: &dyn Backend, v: &Vectors, bip: &[Bip340Vector]) -> Bip340Result {
+    let mut res = Bip340Result {
+        sign_ok: true,
+        known_pub_ok: true,
+        known_pub_odd_only: true,
+        verify_ok: true,
+        fast_ok: true,
+        fast_accepts_odd_r: false,
+        fast_ok_but_odd_r: true,
+        batch_ok: true,
+    };
+    for t in bip {
+        if let (Some(sk), Some(aux)) = (t.seckey, t.aux) {
+            let mut s = [0u8; 64];
+            if !guard(|| b.sign(&mut s, &t.msg, &sk, &aux)) || s != t.sig {
+                eprintln!("{}: BIP-340 vector {}: sign differs", b.name(), t.index);
+                res.sign_ok = false;
+            }
+            let (mut p65, mut p33) = ([0u8; 65], [0u8; 33]);
+            if !r.pubkey_create(&mut p65, &sk) || !r.pubkey_compress(&mut p33, &p65) {
+                die("reference BIP-340 pubkey");
+            }
+            let x: [u8; 32] = p33[1..].try_into().unwrap();
+            let mut s = [0u8; 64];
+            if !guard(|| b.sign_known_pub(&mut s, &t.msg, &sk, &p33, &x, &aux)) || s != t.sig {
+                eprintln!("{}: BIP-340 vector {}: sign.knownPub differs", b.name(), t.index);
+                res.known_pub_ok = false;
+                if p33[0] != 0x03 {
+                    res.known_pub_odd_only = false;
+                }
+            }
+        }
+        if guard(|| b.verify(&t.sig, &t.msg, &t.pubkey)) != t.expected {
+            let what = if t.expected { "rejects" } else { "accepts" };
+            eprintln!("{}: BIP-340 vector {}: verify {what} it", b.name(), t.index);
+            res.verify_ok = false;
+        }
+        if b.has_verify_fast() && guard(|| b.verify_fast(&t.sig, &t.msg, &t.pubkey)) != t.expected {
+            let what = if t.expected { "rejects" } else { "accepts" };
+            eprintln!("{}: BIP-340 vector {}: verifyFast {what} it", b.name(), t.index);
+            res.fast_ok = false;
+            if t.index == BIP340_ODD_R {
+                res.fast_accepts_odd_r = true;
+            } else {
+                res.fast_ok_but_odd_r = false;
+            }
+        }
+    }
+    if b.has_verify_batch() {
+        for at in [0, BATCH - 1] {
+            let mut sigs = v.batch_sig.clone();
+            sigs[at][63] = sigs[at][63].wrapping_add(1);
+            if guard(|| b.verify_batch(&v.xonly[0], &sigs, &v.msg[..BATCH])) {
+                eprintln!("{}: verifyBatch accepts a batch whose signature {at} is bad", b.name());
+                res.batch_ok = false;
+            }
+        }
+    }
+    res
+}
+
 // ---------------------------------------------------------------- correctness per op
 
 struct Correctness {
     ok: HashMap<Op, bool>,
     /// sign.knownPub was wrong, and only for keys whose public key has odd y (KI-2)
     known_pub_wrong_odd_only: bool,
+    /// KI-4 as observed (None without a fast verify), and the ops it explains: the fast verifies
+    /// whose only fault is the odd-y R.
+    fast_accepts_odd_r: Option<bool>,
+    explained_by_odd_r: Vec<Op>,
 }
 
 fn correctness(
     b: &dyn Backend,
+    r: &dyn Backend,
     v: &Vectors,
     ds: &Dataset,
+    bip: &[Bip340Vector],
     want: &HashMap<String, String>,
     dwant: &HashMap<String, String>,
 ) -> Correctness {
@@ -520,8 +671,17 @@ fn correctness(
     if b.seckey_verify(&[0u8; 32]) || b.seckey_verify(&ORDER) {
         seckey_ok = false;
     }
-    let batch_ok = !b.has_verify_batch() || b.verify_batch(&v.xonly[0], &v.batch_sig, &v.msg[..BATCH]);
-    let verify_ok = good[D_VERIFY] && good[D_VERIFY_TAMPERED];
+    let br = bip340(b, r, v, bip);
+    if !br.known_pub_ok {
+        known_pub_ok = false;
+        if !br.known_pub_odd_only {
+            known_pub_odd_only = false;
+        }
+    }
+    let batch_ok = (!b.has_verify_batch() || b.verify_batch(&v.xonly[0], &v.batch_sig, &v.msg[..BATCH])) && br.batch_ok;
+    let fast_ok_but_odd_r = fast_ok && br.fast_ok_but_odd_r;
+    fast_ok = fast_ok && br.fast_ok;
+    let verify_ok = good[D_VERIFY] && good[D_VERIFY_TAMPERED] && br.verify_ok;
 
     let (dd, ecdh_calls_ok) = dataset_digests(b, v, ds);
     let mut dgood = [false; 3];
@@ -534,14 +694,14 @@ fn correctness(
     }
     let ds_fast_ok =
         !b.has_verify_fast() || (0..ds.id.len()).all(|i| b.verify_fast(&ds.sig[i], &ds.id[i], &ds.pubkey[i]));
-    let ds_batch_ok = !b.has_verify_batch() || (0..ds.pages).all(|p| verify_page(b, ds, p));
-    let ds_verify_ok = dgood[0] && dgood[1];
+    let ds_batch_ok = (!b.has_verify_batch() || (0..ds.pages).all(|p| verify_page(b, ds, p))) && br.batch_ok;
+    let ds_verify_ok = dgood[0] && dgood[1] && br.verify_ok;
     let ok = HashMap::from([
         (Op::VerifySame, verify_ok),
         (Op::VerifyMany, verify_ok),
         (Op::VerifyFastSame, verify_ok && fast_ok),
         (Op::VerifyBatch, batch_ok),
-        (Op::Sign, good[D_SIGN]),
+        (Op::Sign, good[D_SIGN] && br.sign_ok),
         (Op::SignKnownPub, known_pub_ok),
         (Op::PubCreate, good[D_PUB_CREATE]),
         (Op::PubCompress, good[D_PUB_COMPRESS]),
@@ -550,11 +710,25 @@ fn correctness(
         (Op::TweakMul, good[D_TWEAK_MUL]),
         (Op::TweakAdd, good[D_TWEAK_ADD]),
         (Op::NostrVerify, ds_verify_ok),
-        (Op::NostrVerifyFast, ds_verify_ok && ds_fast_ok),
+        (Op::NostrVerifyFast, ds_verify_ok && ds_fast_ok && br.fast_ok),
         (Op::NostrBatch, ds_batch_ok),
         (Op::NostrEcdh, dgood[2] && ecdh_calls_ok),
     ]);
-    Correctness { ok, known_pub_wrong_odd_only: !known_pub_ok && known_pub_odd_only }
+    let mut explained_by_odd_r = Vec::new();
+    if br.fast_accepts_odd_r && fast_ok_but_odd_r {
+        if verify_ok {
+            explained_by_odd_r.push(Op::VerifyFastSame);
+        }
+        if ds_verify_ok && ds_fast_ok {
+            explained_by_odd_r.push(Op::NostrVerifyFast);
+        }
+    }
+    Correctness {
+        ok,
+        known_pub_wrong_odd_only: !known_pub_ok && known_pub_odd_only,
+        fast_accepts_odd_r: b.has_verify_fast().then_some(br.fast_accepts_odd_r),
+        explained_by_odd_r,
+    }
 }
 
 // ---------------------------------------------------------------- known issues
@@ -577,12 +751,12 @@ fn add_small_to_s(sig: &mut [u8; 64], d: i32) {
     }
 }
 
-/// KI-1, KI-2, KI-3 as observed: None when the library lacks the operations involved.
-type Issues = [(&'static str, Option<bool>); 3];
+/// KI-1 to KI-4 as observed: None when the library lacks the operations involved.
+type Issues = [(&'static str, Option<bool>); 4];
 
 /// Probes run after timing, on keys derived under their own labels, so their cache side effects
 /// (KI-3) cannot reach the timed rows. `r` is the reference library (libsecp256k1).
-fn probe_issues(b: &dyn Backend, r: &dyn Backend, v: &Vectors, known_pub_wrong_odd_only: bool) -> Issues {
+fn probe_issues(b: &dyn Backend, r: &dyn Backend, v: &Vectors, c: &Correctness) -> Issues {
     let ki1 = if b.has_verify_batch() {
         let (mut s1, mut s2) = (v.batch_sig[0], v.batch_sig[1]);
         add_small_to_s(&mut s1, 1);
@@ -616,12 +790,19 @@ fn probe_issues(b: &dyn Backend, r: &dyn Backend, v: &Vectors, known_pub_wrong_o
             rejected += 1;
         }
     }
-    [("KI-1", ki1), ("KI-2", Some(known_pub_wrong_odd_only)), ("KI-3", Some(rejected > 0))]
+    [
+        ("KI-1", ki1),
+        ("KI-2", Some(c.known_pub_wrong_odd_only)),
+        ("KI-3", Some(rejected > 0)),
+        ("KI-4", c.fast_accepts_odd_r),
+    ]
 }
 
 /// The ops each known issue makes wrong on the vectors (Runner.COVERS, COVERS in table.py).
-/// KI-1 and KI-3 leave every row correct.
-const COVERS: [(Op, &str); 1] = [(Op::SignKnownPub, "KI-2")];
+/// KI-1 and KI-3 leave every row correct; KI-4 explains a fast verify only when the odd-y R is all
+/// that is wrong with it (Correctness::explained_by_odd_r).
+const COVERS: [(Op, &str); 3] =
+    [(Op::SignKnownPub, "KI-2"), (Op::VerifyFastSame, "KI-4"), (Op::NostrVerifyFast, "KI-4")];
 
 // ---------------------------------------------------------------- context
 
@@ -735,6 +916,10 @@ fn main() {
     let vec_text = fs::read_to_string(&vec_path).unwrap_or_else(|_| die("cannot read the vectors file"));
     let vec_sha = hex(&sha256(vec_text.as_bytes()));
     let want = parse_digests(&vec_text);
+    let bip_path = Path::new(&vec_path).parent().unwrap_or(Path::new(".")).join("bip340/test-vectors.csv");
+    let bip_text = fs::read_to_string(&bip_path).unwrap_or_else(|_| die("cannot read vectors/bip340/test-vectors.csv"));
+    let bip_sha = hex(&sha256(bip_text.as_bytes()));
+    let bip = load_bip340(&bip_text);
 
     let reference = libsecp256k1::Libsecp256k1 {
         version: format!(
@@ -764,16 +949,18 @@ fn main() {
     if check_only {
         let mut unexplained = Vec::new();
         for b in &selected {
-            let c = correctness(*b, &v, &ds, &want, &dwant);
-            let issues = probe_issues(*b, &reference, &v, c.known_pub_wrong_odd_only);
+            let c = correctness(*b, &reference, &v, &ds, &bip, &want, &dwant);
+            let issues = probe_issues(*b, &reference, &v, &c);
             eprintln!("{} ({}): known issues {:?}", b.name(), b.binding(), issues);
             for (op, name) in OPS {
                 if c.ok[&op] {
                     continue;
                 }
-                let explained = COVERS
-                    .iter()
-                    .any(|(o, ki)| *o == op && issues.iter().any(|(k, seen)| k == ki && *seen == Some(true)));
+                let explained = COVERS.iter().any(|(o, ki)| {
+                    *o == op
+                        && issues.iter().any(|(k, seen)| k == ki && *seen == Some(true))
+                        && (*ki != "KI-4" || c.explained_by_odd_r.contains(&op))
+                });
                 if explained {
                     eprintln!("{} {}: wrong, as a known issue says", b.name(), name);
                 } else {
@@ -792,7 +979,8 @@ fn main() {
     }
 
     let mut out = String::new();
-    out += &format!("{{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"{vec_sha}\",\n");
+    out += &format!("{{\n  \"schema\": 4,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"{vec_sha}\",\n");
+    out += &format!("  \"bip340Sha256\": \"{bip_sha}\",\n");
     out += &format!("  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"{}\",\n  \"layer\": \"rust\",\n", ds.sha_hex);
     out += &format!("  \"quick\": {quick},\n  \"context\": {{\n    \"date\": \"{}\",\n", utc_date());
     out += &format!(
@@ -817,13 +1005,13 @@ fn main() {
     let mut issues_json = Vec::new();
     for b in &selected {
         // correctness, before any timing
-        let c = correctness(*b, &v, &ds, &want, &dwant);
+        let c = correctness(*b, &reference, &v, &ds, &bip, &want, &dwant);
         let mut t = Vec::new();
         for (op, name) in OPS {
             eprintln!("{} {}...", b.name(), name);
             t.push((op, name, bench.time_op(*b, op, quick)));
         }
-        let is = probe_issues(*b, &reference, &v, c.known_pub_wrong_odd_only);
+        let is = probe_issues(*b, &reference, &v, &c);
         let seen = |k: &str| is.iter().any(|(id, s)| *id == k && *s == Some(true));
         for (op, name, tm) in t {
             let Some(tm) = tm else { continue };
@@ -831,6 +1019,8 @@ fn main() {
                 "\"KI-1\""
             } else if op == Op::SignKnownPub && seen("KI-2") {
                 "\"KI-2\""
+            } else if (op == Op::VerifyFastSame || op == Op::NostrVerifyFast) && seen("KI-4") {
+                "\"KI-4\""
             } else {
                 ""
             };
@@ -847,11 +1037,12 @@ fn main() {
         }
         let fmt = |s: Option<bool>| s.map_or("null".to_string(), |x| x.to_string());
         issues_json.push(format!(
-            "\n    \"{}\": {{ \"KI-1\": {}, \"KI-2\": {}, \"KI-3\": {} }}",
+            "\n    \"{}\": {{ \"KI-1\": {}, \"KI-2\": {}, \"KI-3\": {}, \"KI-4\": {} }}",
             b.name(),
             fmt(is[0].1),
             fmt(is[1].1),
-            fmt(is[2].1)
+            fmt(is[2].1),
+            fmt(is[3].1)
         ));
     }
     out += &rows.join(",");

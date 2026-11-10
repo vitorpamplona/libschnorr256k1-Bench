@@ -43,8 +43,8 @@ That would be a second libsecp256k1 binding on this layer, so the Gradle tasks t
 layer (`:bench:runJvm` and the JVM tests) set the variable, and `BitcoinSImpl` refuses to start
 on any runtime other than `BouncycastleCryptoRuntime`.
 
-Known-issue probes: none of the three has a batch verify (KI-1 `null`) and none signs wrongly for
-odd-y keys (KI-2 `false`). KI-3 is probed on `bouncycastle` and `bitcoin-s` (`false`), and is
+Known-issue probes: none of the three has a batch or a fast verify (KI-1 and KI-4 `null`) and none
+signs wrongly for odd-y keys (KI-2 `false`). KI-3 is probed on `bouncycastle` and `bitcoin-s` (`false`), and is
 `null` on `nostr-java`, which has no tweak-mul.
 
 ## `Impl.lacks`

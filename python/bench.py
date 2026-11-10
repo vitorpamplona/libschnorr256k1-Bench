@@ -3,8 +3,9 @@
 
   bench.py run   [--quick] [--library NAME] [--device TEXT] [--machine dedicated|shared]
                  [--harness COMMIT] [--jobs N]
-      check every library against vectors/v1.txt and datasets/nostr-v1.txt, time every
-      operation, probe the known issues, print a schema-3 result (results/SCHEMA.md) as JSON
+      check every library against vectors/v1.txt, BIP-340's own vectors
+      (vectors/bip340/test-vectors.csv) and datasets/nostr-v1.txt, time every operation, probe
+      the known issues, print a schema-4 result (results/SCHEMA.md) as JSON
   bench.py check [--library NAME] [--jobs N]
       the checks and probes without the timing; exits 1 on a wrong result that no observed
       known issue explains (the cross-check for CI)
@@ -32,6 +33,7 @@ import impls
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 VECTORS_TXT = os.path.join(ROOT, "vectors", "v1.txt")
+BIP340_CSV = os.path.join(ROOT, "vectors", "bip340", "test-vectors.csv")
 DATASET_BIN = os.path.join(ROOT, "datasets", "nostr-v1.bin")
 DATASET_TXT = os.path.join(ROOT, "datasets", "nostr-v1.txt")
 
@@ -266,7 +268,99 @@ def run_checks(bs, ds, jobs, only):
     return results
 
 
-def correctness(b, v, ds, results, vec_digests, ds_digests):
+# ---------------------------------------------------------------- BIP-340 vectors
+
+BIP340_ODD_R = 6  # the vector whose only fault is R's odd y (KI-4)
+
+
+def load_bip340(text):
+    """BIP-340's test vectors with a 32-byte message, the size every operation here takes
+    (vectors/README.md, "BIP-340 vectors")."""
+    out = []
+    for line in text.split("\n")[1:]:
+        line = line.rstrip("\r")
+        if not line:
+            continue
+        # index, secret key, public key, aux_rand, message, signature, verification result, comment
+        f = line.split(",", 7)
+        if len(f) < 7:
+            die("a BIP-340 vector line has too few fields")
+        if len(f[4]) != 64:
+            continue
+        if f[6] not in ("TRUE", "FALSE"):
+            die(f"BIP-340 vector {f[0]}: result {f[6]}")
+        out.append({
+            "index": int(f[0]),
+            "seckey": bytes.fromhex(f[1]) if f[1] else None,
+            "pub": bytes.fromhex(f[2]),
+            "aux": bytes.fromhex(f[3]) if f[3] else None,
+            "msg": bytes.fromhex(f[4]),
+            "sig": bytes.fromhex(f[5]),
+            "expected": f[6] == "TRUE",
+        })
+    if not out:
+        die("no BIP-340 vector has a 32-byte message")
+    return out
+
+
+def guard(f):
+    """A call that raises on an invalid input counts as a rejection; on a valid one, as a wrong result."""
+    try:
+        return f()
+    except Exception:
+        return None
+
+
+def bip340_check(b, ref, v, vectors):
+    """BIP-340's vectors through [b], and a batch with one bad signature, first then last."""
+    r = {
+        "sign": True, "known_pub": True, "known_pub_odd_only": True, "verify": True, "fast": True, "batch": True,
+        # KI-4: verify_fast accepts the odd-y R, and gets every other vector right
+        "fast_accepts_odd_r": False, "fast_ok_but_odd_r": True,
+    }
+    lib = b.library
+    for t in vectors:
+        if t["seckey"] is not None and t["aux"] is not None:
+            if b.sign:
+                s = guard(lambda: b.sign(t["msg"], t["seckey"], t["aux"]))
+                if s is None or bytes(s) != t["sig"]:
+                    log(f"{lib}: BIP-340 vector {t['index']}: sign differs")
+                    r["sign"] = False
+            if b.sign_known_pub:
+                p65 = ref.pubkey_create(t["seckey"])
+                p33 = ref.pubkey_compress(p65) if p65 else None
+                if not p33:
+                    die("reference BIP-340 pubkey")
+                s = guard(lambda: b.sign_known_pub(t["msg"], t["seckey"], p33, p33[1:], t["aux"]))
+                if s is None or bytes(s) != t["sig"]:
+                    log(f"{lib}: BIP-340 vector {t['index']}: sign.knownPub differs")
+                    r["known_pub"] = False
+                    if p33[0] != 0x03:
+                        r["known_pub_odd_only"] = False
+        what = "rejects" if t["expected"] else "accepts"
+        if (guard(lambda: b.verify(t["sig"], t["msg"], t["pub"])) is True) != t["expected"]:
+            log(f"{lib}: BIP-340 vector {t['index']}: verify {what} it")
+            r["verify"] = False
+        if b.verify_fast and (guard(lambda: b.verify_fast(t["sig"], t["msg"], t["pub"])) is True) != t["expected"]:
+            log(f"{lib}: BIP-340 vector {t['index']}: verifyFast {what} it")
+            r["fast"] = False
+            if t["index"] == BIP340_ODD_R:
+                r["fast_accepts_odd_r"] = True
+            else:
+                r["fast_ok_but_odd_r"] = False
+    if b.verify_batch:
+        for at in (0, len(v.batch_sig) - 1):
+            sigs = list(v.batch_sig)
+            bad = bytearray(sigs[at])
+            bad[63] = (bad[63] + 1) & 0xFF
+            sigs[at] = bytes(bad)
+            if guard(lambda: b.verify_batch(v.xonly[0], sigs, v.batch_msg)) is True:
+                log(f"{lib}: verifyBatch accepts a batch whose signature {at} is bad")
+                r["batch"] = False
+    return r
+
+
+def correctness(b, v, ds, results, vec_digests, ds_digests, bip):
     """The correctness of each of [b]'s operations, as c/main.c computes it, from the chunks."""
     lib = b.library
     vt = sorted((t for t in results if t[0] == "vectors" and t[1] == lib), key=lambda t: t[2])
@@ -297,10 +391,16 @@ def correctness(b, v, ds, results, vec_digests, ds_digests):
             log(f"{lib}: {name} digest differs from vectors")
     if b.seckey_verify and (b.seckey_verify(bytes(32)) or b.seckey_verify(ORDER)):
         seckey_ok = False
-    batch_ok = True
+    batch_ok = bip["batch"]
     if b.verify_batch and not b.verify_batch(v.xonly[0], v.batch_sig, v.batch_msg):
         batch_ok = False
-    verify_ok = good["verify"] and good["verify.tampered"]
+    if not bip["known_pub"]:
+        known_pub_ok = False
+        if not bip["known_pub_odd_only"]:
+            known_pub_odd_only = False
+    fast_ok_but_odd_r = fast_ok and bip["fast_ok_but_odd_r"]
+    fast_ok = fast_ok and bip["fast"]
+    verify_ok = good["verify"] and good["verify.tampered"] and bip["verify"]
 
     dt = sorted((t for t in results if t[0] == "dataset" and t[1] == lib), key=lambda t: t[2])
     ok_bytes = b"".join(results[t][0] for t in dt)
@@ -316,14 +416,14 @@ def correctness(b, v, ds, results, vec_digests, ds_digests):
     for name, g in dgood.items():
         if not g:
             log(f"{lib}: {name} digest differs from the dataset's")
-    ds_batch_ok = all(results[t] for t in results if t[0] == "pages" and t[1] == lib)
-    ds_verify_ok = dgood["nostr.verify"] and dgood["nostr.verify.tampered"]
+    ds_batch_ok = all(results[t] for t in results if t[0] == "pages" and t[1] == lib) and bip["batch"]
+    ds_verify_ok = dgood["nostr.verify"] and dgood["nostr.verify.tampered"] and bip["verify"]
     ok = {
         "verify.sameKey": verify_ok,
         "verify.manyKeys": verify_ok,
         "verifyFast.sameKey": verify_ok and fast_ok,
         "verifyBatch200.perSig": batch_ok,
-        "sign": good["sign"],
+        "sign": good["sign"] and bip["sign"],
         "sign.knownPub": known_pub_ok,
         "pubkey.create": good.get("pubkey.create", False),
         "pubkey.compress": good.get("pubkey.compress", False),
@@ -332,11 +432,22 @@ def correctness(b, v, ds, results, vec_digests, ds_digests):
         "tweak.mul": good.get("tweak.mul", False),
         "tweak.add": good.get("tweak.add", False),
         "nostr.verify": ds_verify_ok,
-        "nostr.verifyFast": ds_verify_ok and ds_fast_ok,
+        "nostr.verifyFast": ds_verify_ok and ds_fast_ok and bip["fast"],
         "nostr.verifyBatchByAuthor": ds_batch_ok,
         "nostr.ecdh": dgood.get("nostr.ecdh", False),
     }
-    return ok, (not known_pub_ok) and known_pub_odd_only
+    explained_by_odd_r = set()
+    if bip["fast_accepts_odd_r"] and fast_ok_but_odd_r:
+        if verify_ok:
+            explained_by_odd_r.add("verifyFast.sameKey")
+        if ds_verify_ok and ds_fast_ok:
+            explained_by_odd_r.add("nostr.verifyFast")
+    return {
+        "ok": ok,
+        "known_pub_odd_only": (not known_pub_ok) and known_pub_odd_only,
+        "fast_accepts_odd_r": bip["fast_accepts_odd_r"] if b.verify_fast else None,
+        "explained_by_odd_r": explained_by_odd_r,
+    }
 
 
 # ---------------------------------------------------------------- operations
@@ -589,8 +700,9 @@ def add_small_to_s(sig, d):
     return bytes(s)
 
 
-def probe_issues(b, ref, v, known_pub_odd_only):
-    """KI-1..KI-3 on keys apart from the vectors, after the timing (c/main.c's probe_issues)."""
+def probe_issues(b, ref, v, c):
+    """KI-1..KI-3 on keys apart from the vectors, after the timing (c/main.c's probe_issues); KI-4
+    from the BIP-340 vectors."""
     ki1 = None
     if b.verify_batch:
         s1 = add_small_to_s(v.batch_sig[0], 1)
@@ -615,11 +727,12 @@ def probe_issues(b, ref, v, known_pub_odd_only):
             if not b.verify(sig, msg, p33[1:]):
                 rejected += 1
         ki3 = rejected > 0
-    return {"KI-1": ki1, "KI-2": bool(known_pub_odd_only), "KI-3": ki3}
+    return {"KI-1": ki1, "KI-2": bool(c["known_pub_odd_only"]), "KI-3": ki3, "KI-4": c["fast_accepts_odd_r"]}
 
 
-# The ops each known issue makes wrong on the vectors (bench's Runner.COVERS).
-COVERS = {"sign.knownPub": "KI-2"}
+# The ops each known issue makes wrong on the vectors (bench's Runner.COVERS). KI-4 explains a fast
+# verify only when the odd-y R is all that is wrong with it (correctness()'s explained_by_odd_r).
+COVERS = {"sign.knownPub": "KI-2", "verifyFast.sameKey": "KI-4", "nostr.verifyFast": "KI-4"}
 
 # ---------------------------------------------------------------- context
 
@@ -702,6 +815,10 @@ def main(argv):
 
     with open(VECTORS_TXT, "rb") as f:
         vec_sha = sha256(f.read()).hex()
+    with open(BIP340_CSV, "rb") as f:
+        bip_bytes = f.read()
+    bip_sha = sha256(bip_bytes).hex()
+    bip_vectors = load_bip340(bip_bytes.decode())
     vec_digests = read_digests(VECTORS_TXT)
     ds_digests = read_digests(DATASET_TXT)
     if ds_digests.get("file") != ds.sha256_hex:
@@ -712,19 +829,23 @@ def main(argv):
     t0 = time.monotonic()
     results = run_checks(run_bs, ds, jobs, only)
     log(f"checks took {time.monotonic() - t0:.0f} s")
-    checks = {b.library: correctness(b, v, ds, results, vec_digests, ds_digests) for b in run_bs}
+    checks = {
+        b.library: correctness(b, v, ds, results, vec_digests, ds_digests, bip340_check(b, ref, v, bip_vectors))
+        for b in run_bs
+    }
 
     if cmd == "check":
         unexplained = []
         for b in run_bs:
-            ok, odd_only = checks[b.library]
-            ki = probe_issues(b, ref, v, odd_only)
+            c = checks[b.library]
+            ok = c["ok"]
+            ki = probe_issues(b, ref, v, c)
             log(f"{b.library} ({b.binding}): known issues {ki}")
             for op in OPS:
                 if make_run(b, op, v, ds) is None or ok[op]:
                     continue
                 k = COVERS.get(op)
-                if k and ki.get(k):
+                if k and ki.get(k) and (k != "KI-4" or op in c["explained_by_odd_r"]):
                     log(f"{b.library} {op}: wrong, as {k} says")
                 else:
                     unexplained.append(f"{b.library} {op}")
@@ -735,12 +856,13 @@ def main(argv):
 
     rows, issues = [], {}
     for b in run_bs:
-        ok, odd_only = checks[b.library]
+        c = checks[b.library]
+        ok = c["ok"]
         t = {}
         for op in OPS:
             log(f"{b.library} {op}...")
             t[op] = time_op(b, op, v, ds, quick)
-        ki = probe_issues(b, ref, v, odd_only)
+        ki = probe_issues(b, ref, v, c)
         issues[b.library] = ki
         for op in OPS:
             if t[op] is None:
@@ -751,6 +873,8 @@ def main(argv):
                 kis.append("KI-1")
             if op == "sign.knownPub" and ki["KI-2"]:
                 kis.append("KI-2")
+            if op in ("verifyFast.sameKey", "nostr.verifyFast") and ki["KI-4"]:
+                kis.append("KI-4")
             rows.append(
                 f'    {{ "op": "{op}", "library": "{b.library}", "binding": "{b.binding}", '
                 f'"median_ns": {fmt(med)}, "p5_ns": {fmt(p5)}, "p95_ns": {fmt(p95)}, "samples": {n}, '
@@ -770,9 +894,10 @@ def main(argv):
     jv = lambda x: "null" if x is None else "true" if x else "false"  # noqa: E731
     out = [
         "{",
-        '  "schema": 3,',
+        '  "schema": 4,',
         '  "vectors": "v1",',
         f'  "vectorsSha256": "{vec_sha}",',
+        f'  "bip340Sha256": "{bip_sha}",',
         '  "dataset": "nostr-v1",',
         f'  "datasetSha256": "{ds.sha256_hex}",',
         '  "layer": "python",',
@@ -786,7 +911,8 @@ def main(argv):
         "  ],",
         '  "known_issues_observed": {',
         ",\n".join(
-            f'    {json.dumps(lib)}: {{ "KI-1": {jv(k["KI-1"])}, "KI-2": {jv(k["KI-2"])}, "KI-3": {jv(k["KI-3"])} }}'
+            f'    {json.dumps(lib)}: {{ "KI-1": {jv(k["KI-1"])}, "KI-2": {jv(k["KI-2"])}, "KI-3": {jv(k["KI-3"])}, '
+            f'"KI-4": {jv(k["KI-4"])} }}'
             for lib, k in issues.items()
         ),
         "  }",

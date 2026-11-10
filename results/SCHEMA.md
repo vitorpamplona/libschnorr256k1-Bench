@@ -1,8 +1,13 @@
-# Results schema, v3
+# Results schema, v4
 
 Frozen. Renaming an operation, changing what it measures or how a statistic is computed, or
 adding a column, is schema v4. Results with different schema versions, vector digests or
 datasets are never put in the same table.
+
+v4 (2026-11-10) adds BIP-340's own test vectors (`vectors/bip340/test-vectors.csv`, the rows with a
+32-byte message) to what `correct` checks, with two batch rejections (`vectors/README.md`,
+"BIP-340 vectors"), the `bip340Sha256` field, and KI-4. The operations, inputs, columns and
+statistics are v3's; a v3 result passed fewer checks, so none is compared with a v4 one.
 
 v3 (2026-11-09) adds the `rust`, `go`, `node`, `bun` and `python` layers, and libraries beyond
 the first three on them and on `jvm` (Layers and libraries, below). The operations, inputs,
@@ -19,9 +24,10 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
 
 ```json
 {
-  "schema": 3,
+  "schema": 4,
   "vectors": "v1",
   "vectorsSha256": "<SHA-256 of vectors/v1.txt>",
+  "bip340Sha256": "<SHA-256 of vectors/bip340/test-vectors.csv>",
   "dataset": "nostr-v1",
   "datasetSha256": "<SHA-256 of datasets/nostr-v1.bin>",
   "layer": "c | jvm | native | android | rust | go | node | bun | python",
@@ -50,8 +56,8 @@ for a `--quick` run), written by `scripts/run-host.sh`, `scripts/run-android.sh`
     }
   ],
   "known_issues_observed": {
-    "libschnorr256k1": { "KI-1": true, "KI-2": true, "KI-3": true },
-    "libsecp256k1": { "KI-1": null, "KI-2": false, "KI-3": false }
+    "libschnorr256k1": { "KI-1": false, "KI-2": false, "KI-3": false, "KI-4": true },
+    "libsecp256k1": { "KI-1": null, "KI-2": false, "KI-3": false, "KI-4": null }
   }
 }
 ```
@@ -97,7 +103,7 @@ commit (`-dirty` with local changes) for the pure-Kotlin library.
 | `median_ns` | Median over samples of (sample time ÷ operations in the sample). One operation is one call; for `verifyBatch200.perSig`, one call ÷ 200. |
 | `p5_ns`, `p95_ns` | 5th and 95th percentile of the same per-sample values (nearest rank). |
 | `samples` | Number of samples behind the statistics. A sample is one timed batch of calls lasting at least 100 ms, on every layer: one runner method (`c/main.c`, and its twin `bench/.../Runner.kt` for the Kotlin layers) after 1 s of warm-up, 20 samples. No JMH or Jetpack Microbenchmark, so no layer measures differently. |
-| `correct` | The library's outputs matched `vectors/v1.txt` (and the direct checks in `vectors/README.md`) before timing. A row with `false` is reported but never compared. |
+| `correct` | The library's outputs matched `vectors/v1.txt`, BIP-340's own vectors and the direct checks in `vectors/README.md`, and, for the `nostr.*` operations, the dataset's digests, before timing. Each operation is judged by every check on the call it times: `verify.*` and `nostr.verify` by the v1, BIP-340 and dataset verify checks that call, `verifyFast.*` also by the fast verify's, `sign` and `sign.knownPub` by v1 and BIP-340's signing vectors, the batch rows also by the batch rejections. A row with `false` is reported but never compared. |
 | `known_issues` | IDs from the table below that affect this operation for this library, as observed in this run. |
 
 Run-level fields:
@@ -105,7 +111,8 @@ Run-level fields:
 | Field | Definition |
 |---|---|
 | `quick` | `--quick`: 0.2 s warm-up, five samples of at least 20 ms. A smoke run: its numbers are never compared or published. (CI times nothing; it runs only the checks.) |
-| `known_issues_observed` | Per library, whether each known issue reproduced in this run's probes (on keys apart from the vectors, after the timing): `true`, `false`, or `null` when the library lacks the operation. |
+| `bip340Sha256` | SHA-256 of `vectors/bip340/test-vectors.csv`, the BIP-340 vectors checked. |
+| `known_issues_observed` | Per library, whether each known issue reproduced in this run's probes (KI-1 to KI-3 on keys apart from the vectors, after the timing; KI-4 on BIP-340's vector 6): `true`, `false`, or `null` when the library lacks the operation. |
 | `context.machine` | `dedicated`: nothing else ran (a laptop on AC power, a phone charged, cool and in flight mode). `shared`: anything else, a cloud VM or CI runner included. Dedicated runs are what gets published; a full shared run stands in, labelled, until there is one. Quick runs never are. |
 
 Deliberately not in v1, because they are not reliable on every layer (Android in particular):
@@ -153,3 +160,4 @@ would: ACINQ's `Secp256k1` methods, libschnorr256k1-kmp's `Schnorr256k1` methods
 | KI-1 | libschnorr256k1 (fixed in libschnorr256k1#9 and libschnorr256k1-kmp 1.1.0), kotlin (fixed in libschnorr256k1-kotlin `a7d9cba`) | `verifyBatch` has no random coefficients: two invalid signatures that cancel are accepted. It marks `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor`, whose times are then not comparable with a weighted batch. |
 | KI-2 | libschnorr256k1 (fixed in libschnorr256k1#10 and libschnorr256k1-kmp 1.1.0) | `schnorr_sign_xonly` returns invalid signatures for keys whose public key has odd y. Its `sign.knownPub` row is `correct: false`. |
 | KI-3 | libschnorr256k1 (fixed in libschnorr256k1#8 and libschnorr256k1-kmp 1.1.0) | `ecmult` shares an x-keyed table cache with verify: after a tweak-mul on the odd-y form of a key, verify rejects valid signatures for its x-only form, and after a verify the odd-y tweak-mul is negated. No row is affected: `tweak.mul` runs on points no verification uses (`tpub33`). |
+| KI-4 | libschnorr256k1 (`schnorr_verify_fast`), kotlin (`schnorrVerifyFast`) | The fast verify skips BIP-340's check that R has even y, by design (both libraries document it): it accepts BIP-340's vector 6, and any signature whose R has odd y, which every BIP-340 verifier rejects. Only the key's owner can make one, so it forges nothing, but two clients can disagree on whether an event is valid. Its `verifyFast.sameKey` and `nostr.verifyFast` rows are `correct: false`, and their times are not comparable with a full verify's: they skip the work of that check. KI-4 explains a row only when the odd-y R is all that is wrong with it. |
