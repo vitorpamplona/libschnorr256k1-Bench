@@ -245,12 +245,13 @@ def op_table(op, layers):
     out = ["| # | caller | library | via | µs |", "|---:|---|---|---|---:|"]
     for i, (r, lib, row) in enumerate(ranked + wrong, 1):
         rank = str(i) if row["correct"] else "–"
-        us = fmt_us(row["median_ns"]) + ("" if row["correct"] else " **wrong**")
-        if row["known_issues"]:
-            us += " " + ",".join(row["known_issues"])
-        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), us]
+        value = fmt_us(row["median_ns"])
+        # Outside the highlight's bold: "**28.8 **wrong**" would not render as bold text.
+        marks = ("" if row["correct"] else " **wrong**") + (" " + ",".join(row["known_issues"]) if row["known_issues"] else "")
+        cells = [rank, caller(r["layer"]), f"`{lib}`", via(r, lib, row["binding"]), value]
         if lib in HIGHLIGHT:
             cells = [f"**{c}**" if c not in ("-", "–") else c for c in cells]
+        cells[-1] += marks
         out.append("| " + " | ".join(cells) + " |")
     return "\n".join(out) if ranked or wrong else None
 
