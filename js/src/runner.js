@@ -2,12 +2,12 @@
  * Copyright (c) 2025 Vitor Pamplona
  *
  * The JavaScript twin of c/main.c (and bench/.../Runner.kt): check a library against
- * vectors/v1.txt and the nostr-v1 dataset, time the sixteen operations with the same method
+ * vectors/v1.txt, BIP-340's own vectors and the nostr-v1 dataset, time the sixteen operations with the same method
  * (warm-up, samples of at least sampleNs, nearest-rank percentiles of per-sample time ÷ calls),
  * then probe the known issues on keys apart from the vectors.
  */
 import { readFileSync } from 'node:fs';
-import { N, BATCH, ORDER, sha256, sha256Stream, toHex } from './vectors.js';
+import { N, BATCH, ORDER, BIP340_ODD_R, sha256, sha256Stream, toHex } from './vectors.js';
 
 /** Keeps every timed call's result alive, as c/main.c's `sink`. */
 export const sink = { value: 0 };
@@ -18,8 +18,20 @@ export const OPS = [
   'nostr.verify', 'nostr.verifyFast', 'nostr.verifyBatchByAuthor', 'nostr.ecdh',
 ];
 
-/** The ops each known issue makes wrong on the vectors (Runner.COVERS). */
-export const COVERS = { 'sign.knownPub': 'KI-2' };
+/**
+ * The ops each known issue makes wrong on the vectors (Runner.COVERS). KI-4 explains a fast verify
+ * only when the odd-y R is all that is wrong with it (correctness().explainedByOddR).
+ */
+export const COVERS = { 'sign.knownPub': 'KI-2', 'verifyFast.sameKey': 'KI-4', 'nostr.verifyFast': 'KI-4' };
+
+/** A call that throws on an invalid input counts as a rejection; on a valid one, as a wrong result. */
+function guard(f) {
+  try {
+    return f();
+  } catch {
+    return null;
+  }
+}
 
 // ------------------------------------------------------------------ dataset (datasets/README.md)
 
@@ -64,8 +76,9 @@ export function loadDataset(path) {
 // ------------------------------------------------------------------ runner
 
 export class Runner {
-  constructor({ ref, v, ds, vecDigests, dsDigests, quick = false, log = () => {} }) {
+  constructor({ ref, v, ds, vecDigests, dsDigests, bip340, quick = false, log = () => {} }) {
     this.ref = ref;
+    this.bip340 = bip340;
     this.v = v;
     this.ds = ds;
     this.vecDigests = vecDigests;
@@ -145,6 +158,56 @@ export class Runner {
     return all;
   }
 
+  /** BIP-340's vectors through [b], and a batch with one bad signature, first then last. */
+  bip340Check(b) {
+    const ref = this.ref, v = this.v;
+    const r = {
+      signOk: true, knownPubOk: true, knownPubOddOnly: true, verifyOk: true, fastOk: true, batchOk: true,
+      fastAcceptsOddR: false, fastOkButOddR: true, // KI-4: verifyFast accepts the odd-y R, and only that is wrong
+    };
+    const what = (expected) => (expected ? 'rejects' : 'accepts');
+    for (const t of this.bip340) {
+      if (t.seckey && t.aux) {
+        const s = guard(() => b.sign(t.msg, t.seckey, t.aux));
+        if (!s || toHex(s) !== toHex(t.sig)) {
+          this.log(`${b.library}: BIP-340 vector ${t.index}: sign differs`);
+          r.signOk = false;
+        }
+        const p65 = ref.pubkeyCreate(t.seckey);
+        const pub33 = p65 && ref.pubkeyCompress(p65);
+        if (!pub33) throw new Error('reference BIP-340 pubkey');
+        const k = guard(() => b.signKnownPub(t.msg, t.seckey, pub33, pub33.slice(1, 33), t.aux));
+        if (!k || toHex(k) !== toHex(t.sig)) {
+          this.log(`${b.library}: BIP-340 vector ${t.index}: sign.knownPub differs`);
+          r.knownPubOk = false;
+          if (pub33[0] !== 0x03) r.knownPubOddOnly = false;
+        }
+      }
+      if ((guard(() => b.verify(t.sig, t.msg, t.pub)) === true) !== t.expected) {
+        this.log(`${b.library}: BIP-340 vector ${t.index}: verify ${what(t.expected)} it`);
+        r.verifyOk = false;
+      }
+      if (b.verifyFast && (guard(() => b.verifyFast(t.sig, t.msg, t.pub)) === true) !== t.expected) {
+        this.log(`${b.library}: BIP-340 vector ${t.index}: verifyFast ${what(t.expected)} it`);
+        r.fastOk = false;
+        if (t.index === BIP340_ODD_R) r.fastAcceptsOddR = true;
+        else r.fastOkButOddR = false;
+      }
+    }
+    if (b.verifyBatch) {
+      for (const at of [0, v.batchSig.length - 1]) {
+        const sigs = v.batchSig.slice();
+        sigs[at] = sigs[at].slice();
+        sigs[at][63] = (sigs[at][63] + 1) & 0xff;
+        if (guard(() => b.verifyBatch(v.xonly[0], sigs, v.batchMsg)) === true) {
+          this.log(`${b.library}: verifyBatch accepts a batch whose signature ${at} is bad`);
+          r.batchOk = false;
+        }
+      }
+    }
+    return r;
+  }
+
   /** Per op, whether [b]'s outputs were right; and whether sign.knownPub was wrong only for odd-y keys. */
   correctness(b) {
     const v = this.v, ds = this.ds;
@@ -167,8 +230,15 @@ export class Runner {
       if (b.seckeyVerify && !b.seckeyVerify(v.seckey[i])) seckeyOk = false;
     }
     if (b.seckeyVerify && (b.seckeyVerify(new Uint8Array(32)) || b.seckeyVerify(ORDER.slice()))) seckeyOk = false;
-    const batchOk = !b.verifyBatch || b.verifyBatch(v.xonly[0], v.batchSig, v.batchMsg);
-    const verifyOk = good['verify'] && good['verify.tampered'];
+    const bip = this.bip340Check(b);
+    if (!bip.knownPubOk) {
+      knownPubOk = false;
+      if (!bip.knownPubOddOnly) knownPubOddOnly = false;
+    }
+    const batchOk = (!b.verifyBatch || b.verifyBatch(v.xonly[0], v.batchSig, v.batchMsg)) && bip.batchOk;
+    const fastOkButOddR = fastOk && bip.fastOkButOddR;
+    fastOk = fastOk && bip.fastOk;
+    const verifyOk = good['verify'] && good['verify.tampered'] && bip.verifyOk;
 
     const dd = this.datasetDigests(b);
     const dgood = {};
@@ -181,13 +251,13 @@ export class Runner {
     let dsFastOk = true, dsBatchOk = true;
     for (let e = 0; e < ds.n && b.verifyFast; e++) if (!b.verifyFast(ds.sig[e], ds.id[e], ds.pub[e])) dsFastOk = false;
     for (let p = 0; p < ds.pages && b.verifyBatch; p++) if (!this.verifyPage(b, p)) dsBatchOk = false;
-    const dsVerifyOk = dgood['nostr.verify'] && dgood['nostr.verify.tampered'];
+    const dsVerifyOk = dgood['nostr.verify'] && dgood['nostr.verify.tampered'] && bip.verifyOk;
     const ok = {
       'verify.sameKey': verifyOk,
       'verify.manyKeys': verifyOk,
       'verifyFast.sameKey': verifyOk && fastOk,
       'verifyBatch200.perSig': batchOk,
-      'sign': good['sign'] === true,
+      'sign': good['sign'] === true && bip.signOk,
       'sign.knownPub': knownPubOk,
       'pubkey.create': good['pubkey.create'] === true,
       'pubkey.compress': good['pubkey.compress'] === true,
@@ -196,11 +266,21 @@ export class Runner {
       'tweak.mul': good['tweak.mul'] === true,
       'tweak.add': good['tweak.add'] === true,
       'nostr.verify': dsVerifyOk,
-      'nostr.verifyFast': dsVerifyOk && dsFastOk,
-      'nostr.verifyBatchByAuthor': dsBatchOk,
+      'nostr.verifyFast': dsVerifyOk && dsFastOk && bip.fastOk,
+      'nostr.verifyBatchByAuthor': dsBatchOk && bip.batchOk,
       'nostr.ecdh': dgood['nostr.ecdh'] === true,
     };
-    return { ok, knownPubWrongOnlyOddY: !knownPubOk && knownPubOddOnly };
+    const explainedByOddR = new Set();
+    if (bip.fastAcceptsOddR && fastOkButOddR) {
+      if (verifyOk) explainedByOddR.add('verifyFast.sameKey');
+      if (dsVerifyOk && dsFastOk) explainedByOddR.add('nostr.verifyFast');
+    }
+    return {
+      ok,
+      knownPubWrongOnlyOddY: !knownPubOk && knownPubOddOnly,
+      fastAcceptsOddR: b.verifyFast ? bip.fastAcceptsOddR : null,
+      explainedByOddR,
+    };
   }
 
   // ---------------------------------------------------------------- timing
@@ -320,7 +400,7 @@ export class Runner {
   // ---------------------------------------------------------------- known issues
 
   /** c/main.c's probe_issues: after the timing, on keys apart from the vectors. */
-  probeIssues(b, knownPubWrongOnlyOddY) {
+  probeIssues(b, c) {
     const v = this.v, ref = this.ref;
     let ki1 = null;
     if (b.verifyBatch) {
@@ -346,18 +426,18 @@ export class Runner {
       }
       ki3 = rejected > 0;
     }
-    return { 'KI-1': ki1, 'KI-2': knownPubWrongOnlyOddY, 'KI-3': ki3 };
+    return { 'KI-1': ki1, 'KI-2': c.knownPubWrongOnlyOddY, 'KI-3': ki3, 'KI-4': c.fastAcceptsOddR };
   }
 
   /** "library op" for every wrong result no observed known issue explains, and the issues seen. */
   check(b) {
     const c = this.correctness(b);
-    const ki = this.probeIssues(b, c.knownPubWrongOnlyOddY);
+    const ki = this.probeIssues(b, c);
     const unexplained = [];
     for (const op of OPS) {
       if (!this.has(b, op) || c.ok[op]) continue;
       const k = COVERS[op];
-      if (k && ki[k] === true) this.log(`${b.library} ${op}: wrong, as ${k} says`);
+      if (k && ki[k] === true && (k !== 'KI-4' || c.explainedByOddR.has(op))) this.log(`${b.library} ${op}: wrong, as ${k} says`);
       else unexplained.push(`${b.library} ${op}`);
     }
     return { correct: c.ok, knownIssues: ki, unexplained };
@@ -373,7 +453,7 @@ export class Runner {
       timings[op] = this.timeOp(b, op);
     }
     // After the timing too: KI-3 is about state the calls leave behind.
-    const ki = this.probeIssues(b, c.knownPubWrongOnlyOddY);
+    const ki = this.probeIssues(b, c);
     const rows = [];
     for (const op of OPS) {
       const t = timings[op];
@@ -381,6 +461,7 @@ export class Runner {
       const kis = [];
       if ((op === 'verifyBatch200.perSig' || op === 'nostr.verifyBatchByAuthor') && ki['KI-1'] === true) kis.push('KI-1');
       if (op === 'sign.knownPub' && ki['KI-2'] === true) kis.push('KI-2');
+      if ((op === 'verifyFast.sameKey' || op === 'nostr.verifyFast') && ki['KI-4'] === true) kis.push('KI-4');
       rows.push({
         op, library: b.library, binding: b.binding,
         median_ns: t.median, p5_ns: t.p5, p95_ns: t.p95, samples: t.samples,

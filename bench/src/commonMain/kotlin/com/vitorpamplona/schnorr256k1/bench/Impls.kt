@@ -102,7 +102,7 @@ class AcinqImpl(
 
 /** libschnorr256k1-kotlin, pure Kotlin. */
 object KotlinImpl : Impl {
-    override val library = "kotlin"
+    override val library = "libschnorr256k1-kotlin"
     override val binding = "kotlin"
     override val version = "schnorr256k1-kotlin ${VectorsV1.KOTLIN_LIB_COMMIT}"
 

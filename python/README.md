@@ -2,11 +2,11 @@
 
 CPython calling the Python BIP-340 implementations: one binding to libsecp256k1 (the reference,
 which derives the inputs) and every maintained pure-Python implementation we found. `bench.py` is
-the twin of `c/main.c`: the same derivation (`vectors/README.md`), the same digest and dataset
-checks before any timing, the same sixteen operations on the same inputs, the same timing (1 s
+the twin of `c/main.c`: the same derivation (`vectors/README.md`), the same digest, BIP-340
+vector and dataset checks before any timing, the same sixteen operations on the same inputs, the same timing (1 s
 warm-up, then 20 samples of at least 100 ms; `--quick`: 0.2 s and 5 of 20 ms; median and
 5th/95th percentile by nearest rank of time ÷ operations, timed with `time.perf_counter_ns()`),
-the same known-issue probes after the timing, and the same JSON, with `"schema": 3` and
+the same known-issue probes after the timing, and the same JSON, with `"schema": 4` and
 `"layer": "python"`.
 
 ```bash
@@ -44,8 +44,9 @@ and the warm-up fills those anyway.
 `verifyFast` is the full verify for every library (none has a fast variant), as for
 libsecp256k1 in SCHEMA.md. Only `btclib-ecc` has a batch verify, so only it has
 `verifyBatch200.perSig` and `nostr.verifyBatchByAuthor` rows. Known-issue probes run where the
-library has the calls: KI-1 needs a batch verify, KI-3 a tweak-mul (null otherwise); KI-2 is
-`false` unless `sign.knownPub` is wrong on odd-y keys only.
+library has the calls: KI-1 needs a batch verify, KI-3 a tweak-mul, KI-4 a fast verify (null
+otherwise, so KI-4 is always null here); KI-2 is `false` unless `sign.knownPub` is wrong on odd-y
+keys only.
 
 ### Skipped
 

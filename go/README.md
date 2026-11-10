@@ -1,11 +1,12 @@
 # The go layer
 
 Go's BIP-340 implementations, and libsecp256k1 through cgo, timed by `main.go`, a twin of
-`c/main.c`: the same derivation (`vectors.go`; SHA-256 is Go's `crypto/sha256`), the same digest
-and dataset checks before any timing, the same sixteen operations on the same inputs, the same
+`c/main.c`: the same derivation (`vectors.go`; SHA-256 is Go's `crypto/sha256`), the same digest,
+BIP-340 vector (`bip340.go`) and dataset checks before any timing, the same sixteen operations on the same inputs, the same
 timing (1 s warm-up, then 20 samples of at least 100 ms; `--quick`: 0.2 s, 5 of at least 20 ms;
 median and nearest-rank p5/p95 of per-sample time ÷ operations), the same known-issue probes
-after the timing, and the same JSON with `"schema": 3`, `"layer": "go"`.
+after the timing, and the same JSON with `"schema": 4`, `"layer": "go"`. None has a fast verify, so
+KI-4 is `null`.
 
 The runner is one goroutine (`GOMAXPROCS` is left alone); results go into a package-level sink.
 It calls `runtime.GC()` before each operation's warm-up (outside every timed sample), so one

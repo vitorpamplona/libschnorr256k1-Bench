@@ -6,7 +6,8 @@
  *
  *   main.js run   --vectors F --dataset F --dataset-digests F [--library NAME] [--device TEXT]
  *                 [--machine dedicated|shared] [--harness COMMIT] [--quick]
- *       check every library, time every operation, print a result (results/SCHEMA.md) as JSON.
+ *       check every library (BIP-340's own vectors, bip340/test-vectors.csv beside the vectors
+ *       file, included), time every operation, print a result (results/SCHEMA.md) as JSON.
  *       Each library runs in its own process (`measure`), so no library's JIT profile, inline
  *       caches or heap reach another's numbers.
  *   main.js check --vectors F --dataset F --dataset-digests F [--library NAME]
@@ -18,11 +19,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import os from 'node:os';
-import { deriveVectors, parseDigests, sha256, toHex } from './vectors.js';
+import { deriveVectors, parseBip340, parseDigests, sha256, toHex } from './vectors.js';
 import { LIBRARIES, REFERENCE } from './impls.js';
 import { Runner, loadDataset, sink } from './runner.js';
 
-const SCHEMA = 3;
+const SCHEMA = 4;
 const here = dirname(fileURLToPath(import.meta.url));
 const log = (s) => process.stderr.write(s + '\n');
 const die = (s) => { log(`error: ${s}`); process.exit(2); };
@@ -69,15 +70,19 @@ function libraryVersion(pkg) {
   return `${pkg} ${e.version}`;
 }
 
+/** vectors/bip340/test-vectors.csv, beside the vectors file. */
+const bip340Path = (a) => join(dirname(a.vectors), 'bip340', 'test-vectors.csv');
+
 async function setup(a) {
   const vecText = readFileSync(a.vectors, 'utf8');
+  const bip340 = parseBip340(readFileSync(bip340Path(a), 'utf8'));
   const dsText = readFileSync(a.datasetDigests, 'utf8');
   const ds = loadDataset(a.dataset);
   const dsDigests = parseDigests(dsText);
   if (dsDigests.get('file') !== ds.sha256Hex) die('the dataset is not the one its digests file describes');
   const ref = await LIBRARIES[REFERENCE]();
   const v = deriveVectors(ref);
-  const runner = new Runner({ ref, v, ds, vecDigests: parseDigests(vecText), dsDigests, quick: a.quick, log });
+  const runner = new Runner({ ref, v, ds, vecDigests: parseDigests(vecText), dsDigests, bip340, quick: a.quick, log });
   return { runner, ref, ds, vecSha: toHex(sha256(new TextEncoder().encode(vecText))) };
 }
 
@@ -122,6 +127,7 @@ async function main() {
   if (cmd !== 'run') die('usage: main.js run|check --vectors F --dataset F --dataset-digests F [options]');
 
   const vecSha = toHex(sha256(readFileSync(a.vectors)));
+  const bipSha = toHex(sha256(readFileSync(bip340Path(a))));
   const dsSha = toHex(sha256(readFileSync(a.dataset)));
   const parts = [];
   for (const name of names) {
@@ -145,6 +151,7 @@ async function main() {
     `    ${js(p.library)}: { ${Object.entries(p.knownIssues).map(([k, x]) => `${js(k)}: ${x === null ? 'null' : x}`).join(', ')} }`);
   process.stdout.write(
     `{\n  "schema": ${SCHEMA},\n  "vectors": "v1",\n  "vectorsSha256": "${vecSha}",\n` +
+    `  "bip340Sha256": "${bipSha}",\n` +
     `  "dataset": "nostr-v1",\n  "datasetSha256": "${dsSha}",\n  "layer": "${layer}",\n  "quick": ${a.quick},\n` +
     `  "context": {\n${ctx.map(([k, x]) => `    ${js(k)}: ${js(x)}`).join(',\n')},\n    "libraries": { ${libs} }\n  },\n` +
     `  "rows": [\n${rows.join(',\n')}\n  ],\n  "known_issues_observed": {\n${issues.join(',\n')}\n  }\n}\n`);

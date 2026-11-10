@@ -8,7 +8,7 @@ start:
 |---|---|---|
 | `libsecp256k1` | bitcoin-core's libsecp256k1 (the reference) | C; ACINQ's secp256k1-kmp (JNI, cinterop) |
 | `libschnorr256k1` | libschnorr256k1 (C) | C; libschnorr256k1-kmp (JNI, cinterop on Apple) |
-| `kotlin` | libschnorr256k1-kotlin (pure Kotlin), built from the submodule | none |
+| `libschnorr256k1-kotlin` | libschnorr256k1-kotlin (pure Kotlin), built from the submodule | none |
 
 Every other maintained BIP-340 implementation runs beside them, for comparison: more JVM
 libraries in `bench/` (`bench/README-jvm-libraries.md`), and one layer per language, `rust/`,
@@ -19,10 +19,11 @@ their exact calls; results/SCHEMA.md's "Layers and libraries" lists them all.
 ## Layout
 
 - `vectors/`: the inputs (v1, derived from SHA-256 of labels) and `v1.txt`, the digests every
-  library's outputs must match. `datasets/`: `nostr-v1.bin`, 29,614 real signed Nostr events
+  library's outputs must match; `bip340/test-vectors.csv`, BIP-340's own vectors (mostly invalid
+  inputs every verify must reject), which every runner reads beside `v1.txt`. `datasets/`: `nostr-v1.bin`, 29,614 real signed Nostr events
   (id, pubkey, sig) from nostrLibBench's corpus, `nostr-v1.txt` (its digests) and the script
-  that extracts it. `results/SCHEMA.md`: the frozen result format (v3), the sixteen
-  operations with the exact call per library, and the known issues (KI-1..KI-3).
+  that extracts it. `results/SCHEMA.md`: the frozen result format (v4), the sixteen
+  operations with the exact call per library, and the known issues (KI-1..KI-4).
 - `c/`: the c layer. `main.c` (checks, timing, known-issue probes, JSON), `vectors.c` (its own
   SHA-256 and the derivation), one `backend_*.c` per library, `CMakeLists.txt` (both libraries
   from `third_party/` with their own build flags).

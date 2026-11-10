@@ -48,3 +48,34 @@ One line per check: `<check> <sha256-hex>`, SHA-256 over the outputs for i = 0 â
 `sign.knownPub`, `verifyFast` and the batch have no digest of their own: a correct
 `sign.knownPub` equals `sign`, and `verifyFast` and the batch must accept every valid input. Each
 layer checks those directly.
+
+## BIP-340 vectors (`bip340/`)
+
+`bip340/test-vectors.csv` is BIP-340's own test vectors, verbatim from bitcoin/bips at `a34f044`
+(`bip-0340/test-vectors.csv`, the commit `python/vendor/bip340_reference` comes from), under its
+`LICENSE` (BSD-2-Clause OR MIT OR CC0-1.0). Where v1's inputs are all valid, these are mostly the
+edge cases: a public key not on the curve (5) or not below p (14), R with odd y (6), negated
+message or s (7, 8), R at infinity (9, 10), R's x not on the curve (11) or not below p (12), s not
+below n (13), and the key and nonce edge cases of the signing rows (0 to 3). Each runner reads
+the file beside the vectors file (`<dir of v1.txt>/bip340/test-vectors.csv`) and uses the rows
+whose message is 32 bytes, the size every operation here takes: rows 0 to 14 (15 to 18 sign
+messages of 0, 1, 17 and 100 bytes). A result records the file's SHA-256 as `bip340Sha256`.
+
+For each row:
+
+| Check | Must hold |
+|---|---|
+| `sign` | on a row with a secret key: `sign(msg, seckey, aux)` is the row's signature |
+| `sign.knownPub` | on a row with a secret key: the same, with the public key from the layer's libsecp256k1 |
+| `verify` | `verify(sig, msg, pubkey)` is the row's result, `TRUE` or `FALSE` |
+| `verifyFast` | the same, for a library with a fast verify |
+
+And for a library with a batch verify: `batchSig[0..199]` with signature 0, then with signature
+199, given the last byte incremented, must be rejected.
+
+A call that throws (or panics) on an input the vectors expect rejected counts as rejecting it; on
+an input they expect accepted, as a wrong result. Every runner logs each vector a library gets
+wrong, by its index.
+
+Vector 6 is the one KI-4 shows on (`results/SCHEMA.md`): a fast verify that skips the even-y
+check of R accepts it.

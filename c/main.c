@@ -10,8 +10,9 @@
  *                                      on a wrong result no observed known issue explains, or a known
  *                                      issue on the reference
  *   bench run --vectors FILE --dataset DATA --dataset-digests FILE [opts]
- *                                      check every library against both, time every operation,
- *                                      print a schema-v3 result (results/SCHEMA.md) as JSON
+ *                                      check every library against both and BIP-340's own vectors
+ *                                      (bip340/test-vectors.csv beside the vectors file), time every
+ *                                      operation, print a schema-v4 result (results/SCHEMA.md) as JSON
  *     --library NAME     only this library (libsecp256k1 | libschnorr256k1)
  *     --device TEXT      context.device       --machine dedicated|shared   context.machine
  *     --harness COMMIT   context.harness (default: this checkout's commit at configure time)
@@ -413,8 +414,8 @@ static void add_small_to_s(uint8_t sig[64], int d) {
 }
 
 typedef struct {
-    int ki1, ki2, ki3; /* observed */
-    int ki1_tested;
+    int ki1, ki2, ki3, ki4; /* observed */
+    int ki1_tested, ki4_tested;
 } issues;
 
 /* Probes run after timing, on keys derived under their own labels, so their cache side effects
@@ -479,6 +480,130 @@ static const char *expected_digest(const char *file, const char *check) {
         }
     }
     return NULL;
+}
+
+/* ---------------------------------------------------------------- BIP-340 vectors */
+
+/* BIP-340's own test vectors (vectors/bip340/test-vectors.csv; vectors/README.md, "BIP-340
+ * vectors"): the rows with a 32-byte message, the size every operation here takes. */
+#define BIP_ODD_R 6 /* the vector whose only fault is R's odd y (KI-4) */
+#define BIP_MAX 64
+typedef struct {
+    int index, has_seckey, expected;
+    uint8_t seckey[32], pub[32], aux[32], msg[32], sig[64];
+} bip_vector;
+static bip_vector BIP[BIP_MAX];
+static int bip_n;
+
+static int unhex(uint8_t *out, const char *s, size_t len, size_t n) {
+    if (len != 2 * n) return 0;
+    for (size_t i = 0; i < n; i++) {
+        unsigned v;
+        if (sscanf(s + 2 * i, "%2x", &v) != 1) return 0;
+        out[i] = (uint8_t)v;
+    }
+    return 1;
+}
+
+/* Reads the CSV next to the vectors file (<dir>/bip340/test-vectors.csv); returns its text. */
+static char *load_bip340(const char *vec_path) {
+    char path[4096];
+    const char *slash = strrchr(vec_path, '/');
+    int dir = slash ? (int)(slash - vec_path) : 1;
+    snprintf(path, sizeof path, "%.*s/bip340/test-vectors.csv", dir, slash ? vec_path : ".");
+    char *csv = read_file(path);
+    if (!csv) die("cannot read vectors/bip340/test-vectors.csv");
+    int header = 1;
+    for (char *line = csv; line && *line;) {
+        char *end = strchr(line, '\n');
+        size_t ll = end ? (size_t)(end - line) : strlen(line);
+        char buf[1024];
+        if (ll >= sizeof buf) die("a BIP-340 vector line is too long");
+        memcpy(buf, line, ll);
+        buf[ll] = 0;
+        line = end ? end + 1 : NULL;
+        if (ll && buf[ll - 1] == '\r') buf[--ll] = 0;
+        if (header || !ll) { header = 0; continue; }
+        /* index, secret key, public key, aux_rand, message, signature, verification result, comment */
+        const char *f[7];
+        size_t fl[7];
+        char *p = buf;
+        for (int k = 0; k < 7; k++) {
+            char *c = strchr(p, ',');
+            if (!c && k < 6) die("a BIP-340 vector line has too few fields");
+            f[k] = p;
+            fl[k] = c ? (size_t)(c - p) : strlen(p);
+            p = c ? c + 1 : p + fl[k];
+        }
+        if (fl[4] != 64) continue; /* not a 32-byte message */
+        if (bip_n == BIP_MAX) die("too many BIP-340 vectors");
+        bip_vector *v = &BIP[bip_n];
+        v->index = atoi(f[0]);
+        v->has_seckey = fl[1] > 0;
+        if ((v->has_seckey && !unhex(v->seckey, f[1], fl[1], 32)) || !unhex(v->pub, f[2], fl[2], 32) ||
+            (fl[3] && !unhex(v->aux, f[3], fl[3], 32)) || !unhex(v->msg, f[4], fl[4], 32) || !unhex(v->sig, f[5], fl[5], 64))
+            die("a BIP-340 vector does not parse");
+        if (fl[6] == 4 && !strncmp(f[6], "TRUE", 4)) v->expected = 1;
+        else if (fl[6] == 5 && !strncmp(f[6], "FALSE", 5)) v->expected = 0;
+        else die("a BIP-340 vector's result is neither TRUE nor FALSE");
+        if (v->has_seckey && !fl[3]) die("a BIP-340 signing vector has no aux_rand");
+        bip_n++;
+    }
+    if (bip_n == 0) die("no BIP-340 vector has a 32-byte message");
+    return csv;
+}
+
+typedef struct {
+    int sign_ok, known_pub_ok, known_pub_odd_only, verify_ok, fast_ok, batch_ok;
+    int fast_accepts_odd_r, fast_ok_but_odd_r; /* KI-4: verifyFast accepts BIP_ODD_R, and only that is wrong */
+} bip_result;
+
+/* The BIP-340 vectors through the library, and a batch with one bad signature (first, then last). */
+static bip_result bip340_check(const backend *b) {
+    bip_result r = {1, 1, 1, 1, 1, 1, 0, 1};
+    const backend *ref = &backend_libsecp256k1;
+    for (int k = 0; k < bip_n; k++) {
+        const bip_vector *v = &BIP[k];
+        if (v->has_seckey) {
+            uint8_t s[64], pub65[65], pub33[33];
+            if (!b->sign(s, v->msg, v->seckey, v->aux) || memcmp(s, v->sig, 64)) {
+                fprintf(stderr, "%s: BIP-340 vector %d: sign differs\n", b->name, v->index);
+                r.sign_ok = 0;
+            }
+            if (!ref->pubkey_create(pub65, v->seckey) || !ref->pubkey_compress(pub33, pub65)) die("reference BIP-340 pubkey");
+            if (!b->sign_known_pub(s, v->msg, v->seckey, pub33, pub33 + 1, v->aux) || memcmp(s, v->sig, 64)) {
+                fprintf(stderr, "%s: BIP-340 vector %d: sign.knownPub differs\n", b->name, v->index);
+                r.known_pub_ok = 0;
+                if (pub33[0] != 0x03) r.known_pub_odd_only = 0;
+            }
+        }
+        if ((b->verify(v->sig, v->msg, v->pub) ? 1 : 0) != v->expected) {
+            fprintf(stderr, "%s: BIP-340 vector %d: verify %s it\n", b->name, v->index, v->expected ? "rejects" : "accepts");
+            r.verify_ok = 0;
+        }
+        if (b->verify_fast && (b->verify_fast(v->sig, v->msg, v->pub) ? 1 : 0) != v->expected) {
+            fprintf(stderr, "%s: BIP-340 vector %d: verifyFast %s it\n", b->name, v->index, v->expected ? "rejects" : "accepts");
+            r.fast_ok = 0;
+            if (v->index == BIP_ODD_R) r.fast_accepts_odd_r = 1;
+            else r.fast_ok_but_odd_r = 0;
+        }
+    }
+    if (b->verify_batch) {
+        const int at[2] = {0, VEC_BATCH - 1};
+        for (int a = 0; a < 2; a++) {
+            const uint8_t *sigs[VEC_BATCH];
+            uint8_t bad[64];
+            memcpy(sigs, batch_sigs, sizeof sigs);
+            memcpy(bad, batch_sigs[at[a]], 64);
+            bad[63]++;
+            sigs[at[a]] = bad;
+            if (b->verify_batch(V.xonly[0], sigs, batch_msgs, VEC_BATCH)) {
+                fprintf(stderr, "%s: verifyBatch accepts a batch whose signature %d is bad\n", b->name, at[a]);
+                r.batch_ok = 0;
+            }
+        }
+    }
+    return r;
 }
 
 static void cpu_model(char *out, size_t cap) {
@@ -592,6 +717,13 @@ int main(int argc, char **argv) {
         sha256(h, (const uint8_t *)vec, strlen(vec));
         hex(vec_sha, h, 32);
     }
+    char *bip = load_bip340(vec_path);
+    char bip_sha[65];
+    {
+        uint8_t h[32];
+        sha256(h, (const uint8_t *)bip, strlen(bip));
+        hex(bip_sha, h, 32);
+    }
 
     char cpu[256], date[32];
     cpu_model(cpu, sizeof cpu);
@@ -601,7 +733,8 @@ int main(int argc, char **argv) {
     FILE *o = check_only ? fopen("/dev/null", "w") : stdout; /* check: the same pass, no JSON */
     if (!o) die("cannot open /dev/null");
     int unexplained = 0;
-    fprintf(o, "{\n  \"schema\": 3,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
+    fprintf(o, "{\n  \"schema\": 4,\n  \"vectors\": \"v1\",\n  \"vectorsSha256\": \"%s\",\n", vec_sha);
+    fprintf(o, "  \"bip340Sha256\": \"%s\",\n", bip_sha);
     fprintf(o, "  \"dataset\": \"nostr-v1\",\n  \"datasetSha256\": \"%s\",\n  \"layer\": \"c\",\n", ds_sha);
     fprintf(o, "  \"quick\": %s,\n  \"context\": {\n    \"date\": \"%s\",\n    \"device\": ", quick ? "true" : "false", date);
     json_str(o, device);
@@ -671,7 +804,15 @@ int main(int argc, char **argv) {
             if (b->seckey_verify(zero) || b->seckey_verify(n)) seckey_ok = 0;
         }
         if (b->verify_batch && !b->verify_batch(V.xonly[0], batch_sigs, batch_msgs, VEC_BATCH)) batch_ok = 0;
-        int verify_ok = good[D_VERIFY] && good[D_VERIFY_TAMPERED];
+        bip_result bip_r = bip340_check(b);
+        if (!bip_r.known_pub_ok) {
+            known_pub_ok = 0;
+            if (!bip_r.known_pub_odd_only) known_pub_odd_only = 0;
+        }
+        batch_ok = batch_ok && bip_r.batch_ok;
+        int fast_ok_but_odd_r = fast_ok && bip_r.fast_ok_but_odd_r;
+        fast_ok = fast_ok && bip_r.fast_ok;
+        int verify_ok = good[D_VERIFY] && good[D_VERIFY_TAMPERED] && bip_r.verify_ok;
 
         digest_result dd[N_DS_DIGESTS];
         dataset_digests(b, dd);
@@ -689,14 +830,14 @@ int main(int argc, char **argv) {
             if (!b->verify_fast(DS_SIG(i), DS_ID(i), DS_PUB(i))) ds_fast_ok = 0;
         for (unsigned p = 0; p < ds_pages && b->verify_batch; p++)
             if (!verify_page(b, p)) ds_batch_ok = 0;
-        int ds_verify_ok = dgood[DD_VERIFY] && dgood[DD_VERIFY_TAMPERED];
+        int ds_verify_ok = dgood[DD_VERIFY] && dgood[DD_VERIFY_TAMPERED] && bip_r.verify_ok;
         int ok[N_OPS] = {
             [OP_VERIFY_SAME] = verify_ok, [OP_VERIFY_MANY] = verify_ok, [OP_VERIFY_FAST_SAME] = verify_ok && fast_ok,
-            [OP_VERIFY_BATCH] = batch_ok, [OP_SIGN] = good[D_SIGN], [OP_SIGN_KNOWN_PUB] = known_pub_ok,
+            [OP_VERIFY_BATCH] = batch_ok, [OP_SIGN] = good[D_SIGN] && bip_r.sign_ok, [OP_SIGN_KNOWN_PUB] = known_pub_ok,
             [OP_PUB_CREATE] = good[D_PUB_CREATE], [OP_PUB_COMPRESS] = good[D_PUB_COMPRESS], [OP_SECKEY_VERIFY] = seckey_ok,
             [OP_ECDH] = good[D_ECDH], [OP_TWEAK_MUL] = good[D_TWEAK_MUL], [OP_TWEAK_ADD] = good[D_TWEAK_ADD],
-            [OP_NOSTR_VERIFY] = ds_verify_ok, [OP_NOSTR_VERIFY_FAST] = ds_verify_ok && ds_fast_ok,
-            [OP_NOSTR_BATCH] = ds_batch_ok, [OP_NOSTR_ECDH] = dgood[DD_ECDH] && dd[DD_ECDH].ok,
+            [OP_NOSTR_VERIFY] = ds_verify_ok, [OP_NOSTR_VERIFY_FAST] = ds_verify_ok && ds_fast_ok && bip_r.fast_ok,
+            [OP_NOSTR_BATCH] = ds_batch_ok && bip_r.batch_ok, [OP_NOSTR_ECDH] = dgood[DD_ECDH] && dd[DD_ECDH].ok,
         };
 
         timing t[N_OPS];
@@ -705,12 +846,19 @@ int main(int argc, char **argv) {
             t[op] = check_only ? (timing){0} : time_op(b, (op_id)op, quick);
         }
         issues is = probe_issues(b, !known_pub_ok && known_pub_odd_only);
+        is.ki4_tested = b->verify_fast != NULL;
+        is.ki4 = is.ki4_tested && bip_r.fast_accepts_odd_r;
+        /* KI-4 explains a verifyFast row only when the odd-y R is all that is wrong with it */
+        int ki4_explains_fast = is.ki4 && verify_ok && fast_ok_but_odd_r;
+        int ki4_explains_nostr_fast = is.ki4 && ds_verify_ok && ds_fast_ok && fast_ok_but_odd_r;
         for (int op = 0; op < N_OPS; op++) {
             if (ok[op] || (op == OP_SIGN_KNOWN_PUB && is.ki2)) continue; /* COVERS in table.py */
+            if (op == OP_VERIFY_FAST_SAME && ki4_explains_fast) continue;
+            if (op == OP_NOSTR_VERIFY_FAST && ki4_explains_nostr_fast) continue;
             fprintf(stderr, "wrong, and no known issue explains it: %s %s\n", b->name, OP_NAMES[op]);
             unexplained++;
         }
-        if (b == &backend_libsecp256k1 && (is.ki1 || is.ki2 || is.ki3)) {
+        if (b == &backend_libsecp256k1 && (is.ki1 || is.ki2 || is.ki3 || is.ki4)) {
             fprintf(stderr, "the reference shows a known issue: the probes are wrong\n");
             unexplained++;
         }
@@ -720,18 +868,20 @@ int main(int argc, char **argv) {
             const char *ki = "";
             if ((op == OP_VERIFY_BATCH || op == OP_NOSTR_BATCH) && is.ki1) ki = "\"KI-1\"";
             if (op == OP_SIGN_KNOWN_PUB && is.ki2) ki = "\"KI-2\"";
+            if ((op == OP_VERIFY_FAST_SAME || op == OP_NOSTR_VERIFY_FAST) && is.ki4) ki = "\"KI-4\"";
             fprintf(o, "%s\n    { \"op\": \"%s\", \"library\": \"%s\", \"binding\": \"c\", \"median_ns\": %.1f, \"p5_ns\": %.1f, \"p95_ns\": %.1f, \"samples\": %d, \"correct\": %s, \"known_issues\": [%s] }",
                     first_row ? "" : ",", OP_NAMES[op], b->name, t[op].median, t[op].p5, t[op].p95, t[op].samples,
                     ok[op] ? "true" : "false", ki);
             first_row = 0;
         }
         size_t used = strlen(issues_json);
-        snprintf(issues_json + used, sizeof issues_json - used, "%s\n    \"%s\": { \"KI-1\": %s, \"KI-2\": %s, \"KI-3\": %s }",
+        snprintf(issues_json + used, sizeof issues_json - used, "%s\n    \"%s\": { \"KI-1\": %s, \"KI-2\": %s, \"KI-3\": %s, \"KI-4\": %s }",
                  used ? "," : "", b->name, is.ki1_tested ? (is.ki1 ? "true" : "false") : "null",
-                 is.ki2 ? "true" : "false", is.ki3 ? "true" : "false");
+                 is.ki2 ? "true" : "false", is.ki3 ? "true" : "false", is.ki4_tested ? (is.ki4 ? "true" : "false") : "null");
     }
     fprintf(o, "\n  ],\n  \"known_issues_observed\": {%s\n  }\n}\n", issues_json);
     free(vec);
+    free(bip);
     free(dsd);
     if (check_only) {
         printf("%s\n", unexplained ? "check failed" : "every library is correct or explained by a known issue");

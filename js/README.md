@@ -30,7 +30,7 @@ Deno is not covered.
 
 None has a fast or a batch verify, so no library has a `verifyBatch200.perSig` or
 `nostr.verifyBatchByAuthor` row, `verifyFast.sameKey` and `nostr.verifyFast` time the full
-verify (as libsecp256k1's rows do on the other layers), and KI-1 is `null`. None takes the public
+verify (as libsecp256k1's rows do on the other layers), and KI-1 and KI-4 are `null`. None takes the public
 key when signing, so `sign.knownPub` is `sign` (as libsecp256k1's) and KI-2 is `false`.
 
 ### Calls
@@ -67,7 +67,7 @@ process prints, as `c/main.c`'s `sink`. The KI probes run after the timing, on t
 `schnorr256k1-bench/v1/probe/<i>` keys, signed by the reference. SHA-256 for the derivation and
 the digests is `node:crypto`'s (both runtimes have it).
 
-The result is `"schema": 3`, otherwise schema v2's format; `layer` is the runtime.
+The result is `"schema": 4`, otherwise schema v2's format; `layer` is the runtime.
 
 ## Skipped
 

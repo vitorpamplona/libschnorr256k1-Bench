@@ -18,6 +18,7 @@ plugins {
 // (results/SCHEMA.md "vectorsSha256"), exactly as c/main.c computes it over the file's bytes.
 // The included build pins nothing, so its commit is recorded the way c/ records the C libraries'.
 val vectorsFile = rootProject.file("vectors/v1.txt")
+val bip340File = rootProject.file("vectors/bip340/test-vectors.csv")
 val datasetFile = rootProject.file("datasets/nostr-v1.bin")
 val datasetDigestsFile = rootProject.file("datasets/nostr-v1.txt")
 val generatedVectors = layout.buildDirectory.dir("generated/vectors/kotlin")
@@ -32,6 +33,7 @@ val kotlinLibCommit =
 val generateVectors =
     tasks.register("generateVectors") {
         inputs.file(vectorsFile)
+        inputs.file(bip340File)
         inputs.file(datasetDigestsFile)
         inputs.property("kotlinLibCommit", kotlinLibCommit)
         outputs.dir(generatedVectors)
@@ -65,6 +67,33 @@ val generateVectors =
                 |
                 |    val digests: Map<String, String> = mapOf(
                 |$dsEntries,
+                |    )
+                |}
+                |
+                """.trimMargin(),
+            )
+            // vectors/bip340/test-vectors.csv: its rows' first seven fields (the comment is dropped).
+            val bipBytes = bip340File.readBytes()
+            val bipSha = MessageDigest.getInstance("SHA-256").digest(bipBytes).joinToString("") { "%02x".format(it) }
+            val bipRows =
+                String(bipBytes).lines().drop(1).filter { it.isNotBlank() }.joinToString(",\n") { line ->
+                    val f = line.trimEnd('\r').split(",", limit = 8)
+                    require(f.size == 8) { "a BIP-340 vector line has too few fields: $line" }
+                    "        arrayOf(" + f.take(7).joinToString(", ") { "\"$it\"" } + ")"
+                }
+            val bipOut = generatedVectors.get().file("com/vitorpamplona/schnorr256k1/bench/Bip340Csv.kt").asFile
+            bipOut.parentFile.mkdirs()
+            bipOut.writeText(
+                """
+                |// Generated from vectors/bip340/test-vectors.csv by :bench:generateVectors. Do not edit.
+                |package com.vitorpamplona.schnorr256k1.bench
+                |
+                |object Bip340Csv {
+                |    const val FILE_SHA256 = "$bipSha"
+                |
+                |    /** index, secret key, public key, aux_rand, message, signature, verification result */
+                |    val rows: List<Array<String>> = listOf(
+                |$bipRows,
                 |    )
                 |}
                 |

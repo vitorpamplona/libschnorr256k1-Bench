@@ -45,8 +45,9 @@ cmake -S c -B "$build" -DCMAKE_BUILD_TYPE=Release \
 cmake --build "$build" --parallel > /dev/null
 
 dir=/data/local/tmp/schnorr256k1-bench
-adb shell mkdir -p "$dir"
+adb shell mkdir -p "$dir/bip340"
 adb push "$build/bench" vectors/v1.txt datasets/nostr-v1.bin datasets/nostr-v1.txt "$dir/" > /dev/null
+adb push vectors/bip340/test-vectors.csv "$dir/bip340/" > /dev/null # read beside v1.txt
 if [ -n "$check" ]; then
   # adb shell passes the exit status through (adb 1.0.32+)
   exec adb shell "cd $dir && ./bench check --vectors v1.txt --dataset nostr-v1.bin --dataset-digests nostr-v1.txt"
